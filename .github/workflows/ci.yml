@@ -32,7 +32,9 @@ jobs:
           test -s src/mobs.js
           test -s src/audio.js
           test -s src/noise.js
+          test -s src/menu-tools.js
           grep -q 'type="module" src="./src/game-v4.js"' index.html
+          grep -q 'type="module" src="./src/menu-tools.js"' index.html
           grep -q 'style-v4.css' index.html
           grep -q 'three@0.185.1' index.html
           grep -q 'PointerLockControls' src/game-v4.js
@@ -41,3 +43,5 @@ jobs:
           grep -q 'SurvivalState' src/game-v4.js
           grep -q 'MobSystem' src/game-v4.js
           grep -q 'localStorage' src/game-v4.js
+          grep -q 'exportSaveButton' src/menu-tools.js
+          grep -q 'seedInput' src/menu-tools.js
