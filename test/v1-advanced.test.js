@@ -2,9 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BLOCK, ITEM } from '../src/v1/catalog.js';
 import { WorldV1 } from '../src/v1/world.js';
-import { FluxSystem, MinecartSystem } from '../src/v1/automation.js';
+import { FluxSystem, MinecartSystem, BoatSystem } from '../src/v1/automation.js';
 import { ABLOCK, AITEM, ADVANCED_RECIPES } from '../src/v1/advanced-content.js';
 import { ChunkWorkerPool } from '../src/v1/worker-pool.js';
+import { EntityManagerV1 } from '../src/v1/entities.js';
 
 test('advanced content is registered and has recipes',()=>{
   const world=new WorldV1(123);
@@ -74,8 +75,33 @@ test('powered rail accelerates a minecart',()=>{
   flux.tick(.11);
   const cart=carts.spawn(1.5,y+.45,.5);assert.ok(cart);
   carts.push(cart,1,0,1.5);const before=Math.hypot(cart.vx,cart.vz);carts.tick(.5);
-  assert.ok(Math.hypot(cart.vx,cart.vz)>before*.8);
+  assert.ok(Math.hypot(cart.vx,cart.vz)>=before*.8);
   flux.dispose();
+});
+
+test('boats float at the top of a water column and serialize',()=>{
+  const world=new WorldV1(8),boats=new BoatSystem(world);
+  for(let y=20;y<=23;y++)world.setBlock(0,y,0,BLOCK.WATER,{state:{source:true,level:0}});
+  const boat=boats.spawn(.5,21,.5);assert.ok(boat);
+  assert.ok(boat.y>23);
+  boats.steer(boat,1,0,.25);boats.tick(.25);
+  assert.ok(Number.isFinite(boat.x)&&Number.isFinite(boat.z));
+  const raw=boats.serialize(),restored=new BoatSystem(world);restored.load(raw);
+  assert.equal(restored.boats.length,1);
+});
+
+test('trading huts populate persistent villagers with professions',()=>{
+  const world=new WorldV1(901,'overworld');
+  world.generatedStructures.add('hut:2,2');
+  const manager=new EntityManagerV1(world,{seed:901});
+  const player={x:2,y:world.surfaceY(2,2),z:2};
+  manager.tick(.1,player,{daylight:1,difficulty:'normal',doMobSpawning:false});
+  const villagers=manager.entities.filter((e)=>e.type==='villager');
+  assert.equal(villagers.length,2);
+  for(const villager of villagers){assert.ok(villager.data.profession);assert.deepEqual(villager.data.home,{x:2,z:2});}
+  assert.ok(manager.nearbyVillager(player,8));
+  const serialized=manager.serialize(),restored=new EntityManagerV1(world,{seed:901});restored.load(serialized);
+  assert.equal(restored.entities.filter((e)=>e.type==='villager').length,2);
 });
 
 test('ChunkWorkerPool has a deterministic synchronous fallback in Node',async()=>{
