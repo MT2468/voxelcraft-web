@@ -17,7 +17,7 @@
   <div id="hud" class="hidden" aria-hidden="true">
     <div id="stats">FPS --</div>
     <div id="crosshair" aria-hidden="true"></div>
-    <div id="hint">WASD mover · Espaço pular/nadar · Shift correr · Esquerdo minerar/atacar · Direito usar/colocar · 1–9 hotbar · E inventário · T chat · / comandos · F voo no Creative · F3 debug · Esc pausa</div>
+    <div id="hint">WASD mover · Espaço pular/nadar · Shift correr · Esquerdo minerar/atacar · Direito usar/colocar · 1–9 hotbar · E inventário · G guia/mapa · T chat · / comandos · F voo no Creative · F3 debug · Esc pausar</div>
     <div id="hotbar" aria-label="Hotbar"></div>
   </div>
 
@@ -55,6 +55,7 @@
     <details>
       <summary>Controles e recursos</summary>
       <p>Segure o clique esquerdo para minerar. Mire em mobs para atacar. Clique direito usa blocos funcionais, comida, poções, baldes e itens. Plante sementes em terra, use bancadas e fornalhas, ligue circuitos Flux, construa portais de obsidiana e explore Emberdeep/Voidlands. Em Creative, F alterna voo.</p>
+      <p><strong>Guia de Campo:</strong> G abre mapa descoberto, comércio em cabanas, pesca, alquimia e estatísticas.</p>
       <p><strong>Chat/comandos:</strong> T abre o chat e / abre diretamente um comando. Use <code>/help</code>.</p>
     </details>
     <p id="status" class="status">Preparando motor V1…</p>
@@ -77,5 +78,6 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <noscript>VoxelCraft V1 precisa de JavaScript e WebGL.</noscript>
   <script type="module" src="./src/game-v1.js"></script>
+  <script type="module" src="./src/v1/addons.js"></script>
 </body>
 </html>
