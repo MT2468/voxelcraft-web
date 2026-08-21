@@ -7,7 +7,7 @@ const browser = await chromium.launch({
   args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist']
 });
 
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, acceptDownloads: true });
 const errors = [];
 const failedRequests = [];
 page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
@@ -38,7 +38,12 @@ try {
       menuVisible: Boolean(menu?.classList.contains('visible')),
       hotbarSlots: hotbar?.children.length || 0,
       hasSurvivalHud: Boolean(survivalHud),
-      hasWebGL: Boolean(canvas?.getContext('webgl2') || canvas?.getContext('webgl'))
+      hasWebGL: Boolean(canvas?.getContext('webgl2') || canvas?.getContext('webgl')),
+      hasSeedInput: Boolean(document.querySelector('#seedInput')),
+      hasExport: Boolean(document.querySelector('#exportSaveButton')),
+      hasImport: Boolean(document.querySelector('#importSaveButton')),
+      hasVolume: Boolean(document.querySelector('#volumeSlider')),
+      muteLabel: document.querySelector('#muteButton')?.textContent || ''
     };
   });
 
@@ -48,6 +53,9 @@ try {
   if (state.hotbarSlots !== 9) throw new Error(`Expected 9 hotbar slots, got ${state.hotbarSlots}`);
   if (!state.hasSurvivalHud) throw new Error('Survival HUD was not created');
   if (!state.hasWebGL) throw new Error('No WebGL context available');
+  if (!state.hasSeedInput || !state.hasExport || !state.hasImport || !state.hasVolume || !/Som:/.test(state.muteLabel)) {
+    throw new Error(`World tools incomplete: ${JSON.stringify(state)}`);
+  }
 
   await page.screenshot({ path: 'artifacts/menu.png', fullPage: true });
   const before = state.status;
@@ -58,6 +66,22 @@ try {
   }, before, { timeout: 30_000 }).catch(() => {});
   await page.waitForTimeout(700);
   await page.screenshot({ path: 'artifacts/new-world.png', fullPage: true });
+
+  const oldMuteText = await page.locator('#muteButton').textContent();
+  await page.click('#muteButton');
+  const newMuteText = await page.locator('#muteButton').textContent();
+  if (oldMuteText === newMuteText) throw new Error('Mute button did not toggle');
+  await page.click('#muteButton');
+
+  const downloadPromise = page.waitForEvent('download', { timeout: 8_000 });
+  await page.click('#exportSaveButton');
+  const download = await downloadPromise;
+  if (!/^voxelcraft-seed-.*\.json$/i.test(download.suggestedFilename())) {
+    throw new Error(`Unexpected backup filename: ${download.suggestedFilename()}`);
+  }
+  await download.saveAs('artifacts/exported-world.json');
+  const exported = JSON.parse(await fs.readFile('artifacts/exported-world.json', 'utf8'));
+  if (exported.version !== 4 || !Number.isInteger(exported.seed)) throw new Error('Exported backup is not a v4 world');
 
   await page.click('#playButton');
   await page.waitForFunction(() => {
@@ -88,7 +112,7 @@ try {
       recipes: document.querySelectorAll('.recipe').length,
       sections: document.querySelectorAll('.inventory-section').length
     }));
-    if (!inventoryState.visible || inventoryState.recipes < 6 || inventoryState.sections < 2) {
+    if (!inventoryState.visible || inventoryState.recipes < 10 || inventoryState.sections < 2) {
       throw new Error(`Inventory/crafting failed: ${JSON.stringify(inventoryState)}`);
     }
     await page.screenshot({ path: 'artifacts/inventory.png', fullPage: true });
@@ -112,12 +136,12 @@ try {
   }
 
   if (failedRequests.length) {
-    const critical = failedRequests.filter((entry) => /three|game-v4|survival|mobs|noise|audio/i.test(entry));
+    const critical = failedRequests.filter((entry) => /three|game-v4|survival|mobs|noise|audio|menu-tools/i.test(entry));
     if (critical.length) errors.push(...critical.map((entry) => `request: ${entry}`));
   }
   if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
-  console.log(JSON.stringify({ ok: true, ...state, gameplayState, saveState, failedRequests: failedRequests.length }, null, 2));
+  console.log(JSON.stringify({ ok: true, ...state, gameplayState, saveState, exportedSeed: exported.seed, failedRequests: failedRequests.length }, null, 2));
 } finally {
   await browser.close();
 }
