@@ -25,7 +25,17 @@ export const ITEM = Object.freeze({
   COAL: 109,
   IRON_INGOT: 110,
   GOLD_INGOT: 111,
-  DIAMOND: 112
+  DIAMOND: 112,
+  IRON_SWORD: 113,
+  DIAMOND_PICKAXE: 114,
+  DIAMOND_SWORD: 115,
+  RAW_BEEF: 116,
+  RAW_CHICKEN: 117,
+  ROTTEN_FLESH: 118,
+  BONE: 119,
+  COOKED_PORK: 120,
+  COOKED_BEEF: 121,
+  COOKED_CHICKEN: 122
 });
 
 export const ITEM_DEFS = new Map([
@@ -46,14 +56,24 @@ export const ITEM_DEFS = new Map([
   [ITEM.WOOD_PICKAXE, { name: 'Picareta de madeira', kind: 'tool', tool: 'pickaxe', tier: 1, speed: 2.1, damage: 2, durability: 60 }],
   [ITEM.STONE_PICKAXE, { name: 'Picareta de pedra', kind: 'tool', tool: 'pickaxe', tier: 2, speed: 3.1, damage: 3, durability: 132 }],
   [ITEM.IRON_PICKAXE, { name: 'Picareta de ferro', kind: 'tool', tool: 'pickaxe', tier: 3, speed: 4.4, damage: 4, durability: 251 }],
+  [ITEM.DIAMOND_PICKAXE, { name: 'Picareta de diamante', kind: 'tool', tool: 'pickaxe', tier: 4, speed: 6.3, damage: 5, durability: 1561 }],
   [ITEM.WOOD_SWORD, { name: 'Espada de madeira', kind: 'tool', tool: 'sword', tier: 1, speed: 1, damage: 4, durability: 60 }],
   [ITEM.STONE_SWORD, { name: 'Espada de pedra', kind: 'tool', tool: 'sword', tier: 2, speed: 1, damage: 5, durability: 132 }],
+  [ITEM.IRON_SWORD, { name: 'Espada de ferro', kind: 'tool', tool: 'sword', tier: 3, speed: 1, damage: 6, durability: 251 }],
+  [ITEM.DIAMOND_SWORD, { name: 'Espada de diamante', kind: 'tool', tool: 'sword', tier: 4, speed: 1, damage: 7, durability: 1561 }],
   [ITEM.RAW_PORK, { name: 'Carne de porco crua', kind: 'food', hunger: 3, saturation: 1.8 }],
+  [ITEM.RAW_BEEF, { name: 'Carne bovina crua', kind: 'food', hunger: 3, saturation: 1.8 }],
+  [ITEM.RAW_CHICKEN, { name: 'Frango cru', kind: 'food', hunger: 2, saturation: 1.2 }],
+  [ITEM.ROTTEN_FLESH, { name: 'Carne podre', kind: 'food', hunger: 2, saturation: 0.8 }],
+  [ITEM.COOKED_PORK, { name: 'Carne de porco assada', kind: 'food', hunger: 8, saturation: 5 }],
+  [ITEM.COOKED_BEEF, { name: 'Bife', kind: 'food', hunger: 8, saturation: 5 }],
+  [ITEM.COOKED_CHICKEN, { name: 'Frango assado', kind: 'food', hunger: 6, saturation: 3.6 }],
   [ITEM.APPLE, { name: 'Maçã', kind: 'food', hunger: 4, saturation: 2.4 }],
   [ITEM.COAL, { name: 'Carvão', kind: 'material' }],
   [ITEM.IRON_INGOT, { name: 'Barra de ferro', kind: 'material' }],
   [ITEM.GOLD_INGOT, { name: 'Barra de ouro', kind: 'material' }],
-  [ITEM.DIAMOND, { name: 'Diamante', kind: 'material' }]
+  [ITEM.DIAMOND, { name: 'Diamante', kind: 'material' }],
+  [ITEM.BONE, { name: 'Osso', kind: 'material' }]
 ]);
 
 export const RECIPES = Object.freeze([
@@ -61,11 +81,17 @@ export const RECIPES = Object.freeze([
   { id: 'sticks', name: '4 Gravetos', inputs: [[ITEM.PLANKS, 2]], output: [ITEM.STICK, 4] },
   { id: 'wood-pickaxe', name: 'Picareta de madeira', inputs: [[ITEM.PLANKS, 3], [ITEM.STICK, 2]], output: [ITEM.WOOD_PICKAXE, 1] },
   { id: 'stone-pickaxe', name: 'Picareta de pedra', inputs: [[ITEM.COBBLE, 3], [ITEM.STICK, 2]], output: [ITEM.STONE_PICKAXE, 1] },
+  { id: 'iron-pickaxe', name: 'Picareta de ferro', inputs: [[ITEM.IRON_INGOT, 3], [ITEM.STICK, 2]], output: [ITEM.IRON_PICKAXE, 1] },
+  { id: 'diamond-pickaxe', name: 'Picareta de diamante', inputs: [[ITEM.DIAMOND, 3], [ITEM.STICK, 2]], output: [ITEM.DIAMOND_PICKAXE, 1] },
   { id: 'wood-sword', name: 'Espada de madeira', inputs: [[ITEM.PLANKS, 2], [ITEM.STICK, 1]], output: [ITEM.WOOD_SWORD, 1] },
   { id: 'stone-sword', name: 'Espada de pedra', inputs: [[ITEM.COBBLE, 2], [ITEM.STICK, 1]], output: [ITEM.STONE_SWORD, 1] },
+  { id: 'iron-sword', name: 'Espada de ferro', inputs: [[ITEM.IRON_INGOT, 2], [ITEM.STICK, 1]], output: [ITEM.IRON_SWORD, 1] },
+  { id: 'diamond-sword', name: 'Espada de diamante', inputs: [[ITEM.DIAMOND, 2], [ITEM.STICK, 1]], output: [ITEM.DIAMOND_SWORD, 1] },
   { id: 'iron-ingot', name: 'Barra de ferro', inputs: [[ITEM.IRON_ORE, 1], [ITEM.COAL, 1]], output: [ITEM.IRON_INGOT, 1], station: 'furnace' },
   { id: 'gold-ingot', name: 'Barra de ouro', inputs: [[ITEM.GOLD_ORE, 1], [ITEM.COAL, 1]], output: [ITEM.GOLD_INGOT, 1], station: 'furnace' },
-  { id: 'iron-pickaxe', name: 'Picareta de ferro', inputs: [[ITEM.IRON_INGOT, 3], [ITEM.STICK, 2]], output: [ITEM.IRON_PICKAXE, 1] }
+  { id: 'cook-pork', name: 'Carne de porco assada', inputs: [[ITEM.RAW_PORK, 1], [ITEM.COAL, 1]], output: [ITEM.COOKED_PORK, 1], station: 'furnace' },
+  { id: 'cook-beef', name: 'Bife', inputs: [[ITEM.RAW_BEEF, 1], [ITEM.COAL, 1]], output: [ITEM.COOKED_BEEF, 1], station: 'furnace' },
+  { id: 'cook-chicken', name: 'Frango assado', inputs: [[ITEM.RAW_CHICKEN, 1], [ITEM.COAL, 1]], output: [ITEM.COOKED_CHICKEN, 1], station: 'furnace' }
 ]);
 
 export class Inventory {
@@ -85,11 +111,16 @@ export class Inventory {
   }
 
   add(id, amount = 1) {
-    if (!ITEM_DEFS.has(id) || !Number.isFinite(amount) || amount <= 0) return false;
-    const previous = this.count(id);
-    this.counts.set(id, previous + Math.floor(amount));
     const def = ITEM_DEFS.get(id);
-    if (def.kind === 'tool' && previous === 0) this.durability.set(id, def.durability);
+    if (!def || !Number.isFinite(amount) || amount <= 0) return false;
+    const addAmount = Math.floor(amount);
+    if (def.kind === 'tool') {
+      if (this.has(id) || addAmount !== 1) return false;
+      this.counts.set(id, 1);
+      this.durability.set(id, def.durability);
+      return true;
+    }
+    this.counts.set(id, this.count(id) + addAmount);
     return true;
   }
 
@@ -126,13 +157,20 @@ export class Inventory {
   }
 
   canCraft(recipe) {
+    if (!recipe?.inputs || !recipe?.output) return false;
+    const outputDef = ITEM_DEFS.get(recipe.output[0]);
+    if (outputDef?.kind === 'tool' && this.has(recipe.output[0])) return false;
     return recipe.inputs.every(([id, amount]) => this.has(id, amount));
   }
 
   craft(recipe) {
     if (!recipe || !this.canCraft(recipe)) return false;
+    const snapshot = this.serialize();
     for (const [id, amount] of recipe.inputs) this.remove(id, amount);
-    this.add(recipe.output[0], recipe.output[1]);
+    if (!this.add(recipe.output[0], recipe.output[1])) {
+      this.load(snapshot);
+      return false;
+    }
     return true;
   }
 
@@ -143,7 +181,6 @@ export class Inventory {
     const next = (this.durability.get(id) ?? def.durability) - amount;
     if (next <= 0) {
       this.remove(id, 1);
-      if (this.has(id)) this.durability.set(id, def.durability);
       return 'broken';
     }
     this.durability.set(id, next);
@@ -166,15 +203,20 @@ export class Inventory {
     for (const pair of data.counts) {
       if (!Array.isArray(pair) || pair.length !== 2) continue;
       const [id, count] = pair.map(Number);
-      if (!ITEM_DEFS.has(id) || !Number.isFinite(count) || count <= 0) continue;
-      this.counts.set(id, Math.floor(count));
+      const def = ITEM_DEFS.get(id);
+      if (!def || !Number.isFinite(count) || count <= 0) continue;
+      this.counts.set(id, def.kind === 'tool' ? 1 : Math.floor(count));
     }
     if (Array.isArray(data.durability)) {
       for (const pair of data.durability) {
         if (!Array.isArray(pair) || pair.length !== 2) continue;
         const [id, value] = pair.map(Number);
-        if (ITEM_DEFS.get(id)?.kind === 'tool' && Number.isFinite(value) && value > 0) this.durability.set(id, value);
+        if (ITEM_DEFS.get(id)?.kind === 'tool' && this.has(id) && Number.isFinite(value) && value > 0) this.durability.set(id, value);
       }
+    }
+    for (const [id, count] of this.counts) {
+      const def = ITEM_DEFS.get(id);
+      if (def?.kind === 'tool' && count > 0 && !this.durability.has(id)) this.durability.set(id, def.durability);
     }
     if (Array.isArray(data.hotbar) && data.hotbar.length === 9 && data.hotbar.every((id) => ITEM_DEFS.has(Number(id)))) {
       this.hotbar = data.hotbar.map(Number);
@@ -232,7 +274,7 @@ export class SurvivalState {
     this.health = Math.max(0, this.health - amount);
     if (this.health <= 0) {
       this._deadState = true;
-      this._deathSignal = true;
+      this._deathSignal = amount < 900;
     }
     return true;
   }
