@@ -1,147 +1,90 @@
 import { chromium } from 'playwright';
 import fs from 'node:fs/promises';
 
-await fs.mkdir('artifacts', { recursive: true });
-const browser = await chromium.launch({
-  headless: true,
-  args: ['--use-gl=swiftshader', '--enable-webgl', '--ignore-gpu-blocklist']
-});
+await fs.mkdir('artifacts',{recursive:true});
+const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
+const page=await browser.newPage({viewport:{width:1366,height:768},acceptDownloads:true});
+const errors=[],failedRequests=[];
+page.on('pageerror',(e)=>errors.push(`pageerror: ${e.message}`));
+page.on('console',(m)=>{if(m.type()==='error')errors.push(`console: ${m.text()}`);});
+page.on('requestfailed',(r)=>failedRequests.push(`${r.url()} :: ${r.failure()?.errorText||'failed'}`));
 
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, acceptDownloads: true });
-const errors = [];
-const failedRequests = [];
-page.on('pageerror', (error) => errors.push(`pageerror: ${error.message}`));
-page.on('console', (message) => {
-  if (message.type() === 'error') errors.push(`console: ${message.text()}`);
-});
-page.on('requestfailed', (request) => failedRequests.push(`${request.url()} :: ${request.failure()?.errorText || 'failed'}`));
+try{
+  const response=await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:30_000});
+  if(!response?.ok())throw new Error(`HTTP ${response?.status()} loading game`);
+  await page.waitForFunction(()=>Boolean(window.VoxelCraftV1?.state?.().ready),{timeout:60_000});
+  await page.waitForFunction(()=>/seed/i.test(document.querySelector('#status')?.textContent||''),{timeout:20_000});
 
-try {
-  const response = await page.goto('http://127.0.0.1:4173/', { waitUntil: 'domcontentloaded', timeout: 30_000 });
-  if (!response?.ok()) throw new Error(`HTTP ${response?.status()} loading game`);
+  const initial=await page.evaluate(()=>({
+    title:document.title,
+    state:window.VoxelCraftV1.state(),
+    canvas:[document.querySelector('#game')?.width||0,document.querySelector('#game')?.height||0],
+    webgl:Boolean(document.querySelector('#game')?.getContext('webgl2')||document.querySelector('#game')?.getContext('webgl')),
+    menu:document.querySelector('#menu')?.classList.contains('visible'),
+    hotbar:document.querySelector('#hotbar')?.children.length||0,
+    hasWorldSelect:Boolean(document.querySelector('#worldSelect')),
+    hasSeed:Boolean(document.querySelector('#seedInput')),
+    hasSettings:Boolean(document.querySelector('#settingsPanel')),
+    hasMultiplayer:Boolean(document.querySelector('#multiplayerPanel')),
+    hasChat:Boolean(document.querySelector('#chatInput')),
+    hasSurvival:Boolean(document.querySelector('#survivalHud')),
+    hasBoss:Boolean(document.querySelector('#bossBar'))
+  }));
+  if(!initial.title.includes('VoxelCraft V1'))throw new Error(`Unexpected title ${initial.title}`);
+  if(!initial.webgl||!initial.canvas[0]||!initial.canvas[1])throw new Error('WebGL canvas unavailable');
+  if(!initial.menu||initial.hotbar!==9)throw new Error(`Initial shell invalid: ${JSON.stringify(initial)}`);
+  for(const key of['hasWorldSelect','hasSeed','hasSettings','hasMultiplayer','hasChat','hasSurvival','hasBoss'])if(!initial[key])throw new Error(`Missing V1 UI ${key}`);
+  await page.screenshot({path:'artifacts/v1-menu.png',fullPage:true});
 
-  await page.waitForFunction(() => {
-    const status = document.querySelector('#status')?.textContent || '';
-    return /seed/i.test(status) && !/Preparando|Gerando/i.test(status);
-  }, { timeout: 45_000 });
+  await page.fill('#worldName','CI V1 World');await page.fill('#seedInput','424242');await page.selectOption('#gameModeSelect','survival');await page.selectOption('#difficultySelect','normal');await page.click('#newWorldButton');
+  await page.waitForFunction(()=>/424242/.test(document.querySelector('#status')?.textContent||''),{timeout:30_000});
+  const created=await page.evaluate(()=>window.VoxelCraftV1.state());
+  if(created.dimension!=='overworld')throw new Error('New world did not start in overworld');
 
-  const state = await page.evaluate(() => {
-    const canvas = document.querySelector('#game');
-    const menu = document.querySelector('#menu');
-    const hotbar = document.querySelector('#hotbar');
-    const survivalHud = document.querySelector('#survivalHud');
-    return {
-      title: document.title,
-      status: document.querySelector('#status')?.textContent || '',
-      canvasWidth: canvas?.width || 0,
-      canvasHeight: canvas?.height || 0,
-      menuVisible: Boolean(menu?.classList.contains('visible')),
-      hotbarSlots: hotbar?.children.length || 0,
-      hasSurvivalHud: Boolean(survivalHud),
-      hasWebGL: Boolean(canvas?.getContext('webgl2') || canvas?.getContext('webgl')),
-      hasSeedInput: Boolean(document.querySelector('#seedInput')),
-      hasExport: Boolean(document.querySelector('#exportSaveButton')),
-      hasImport: Boolean(document.querySelector('#importSaveButton')),
-      hasVolume: Boolean(document.querySelector('#volumeSlider')),
-      muteLabel: document.querySelector('#muteButton')?.textContent || ''
-    };
+  const commandState=await page.evaluate(()=>{
+    const api=window.VoxelCraftV1;
+    const give=api.command('/give log 8');
+    const set=api.command('/setblock 2 40 2 torch');
+    return{give,set,count:api.inventory.count(5),block:api.world.getBlock(2,40,2)};
   });
+  if(!commandState.give.ok||!commandState.set.ok||commandState.count<8||commandState.block!==17)throw new Error(`V1 commands failed: ${JSON.stringify(commandState)}`);
 
-  if (!state.title.includes('VoxelCraft')) throw new Error(`Unexpected title: ${state.title}`);
-  if (!state.canvasWidth || !state.canvasHeight) throw new Error('WebGL canvas has zero dimensions');
-  if (!state.menuVisible) throw new Error('Initial menu is not visible');
-  if (state.hotbarSlots !== 9) throw new Error(`Expected 9 hotbar slots, got ${state.hotbarSlots}`);
-  if (!state.hasSurvivalHud) throw new Error('Survival HUD was not created');
-  if (!state.hasWebGL) throw new Error('No WebGL context available');
-  if (!state.hasSeedInput || !state.hasExport || !state.hasImport || !state.hasVolume || !/Som:/.test(state.muteLabel)) {
-    throw new Error(`World tools incomplete: ${JSON.stringify(state)}`);
-  }
+  await page.click('#settingsButton');
+  await page.waitForFunction(()=>document.querySelector('#settingsPanel')?.classList.contains('visible'));
+  const settingState=await page.evaluate(()=>({fov:Boolean(document.querySelector('#setFov')),render:Boolean(document.querySelector('#setRender')),volume:Boolean(document.querySelector('#setVolume'))}));
+  if(!settingState.fov||!settingState.render||!settingState.volume)throw new Error(`Settings incomplete ${JSON.stringify(settingState)}`);
+  await page.click('#settingsButton');
 
-  await page.screenshot({ path: 'artifacts/menu.png', fullPage: true });
-  const before = state.status;
-  await page.click('#newWorldButton');
-  await page.waitForFunction((oldStatus) => {
-    const text = document.querySelector('#status')?.textContent || '';
-    return text !== oldStatus && /Novo mundo|seed/i.test(text);
-  }, before, { timeout: 30_000 }).catch(() => {});
-  await page.waitForTimeout(700);
-  await page.screenshot({ path: 'artifacts/new-world.png', fullPage: true });
-
-  const oldMuteText = await page.locator('#muteButton').textContent();
-  await page.click('#muteButton');
-  const newMuteText = await page.locator('#muteButton').textContent();
-  if (oldMuteText === newMuteText) throw new Error('Mute button did not toggle');
-  await page.click('#muteButton');
-
-  const downloadPromise = page.waitForEvent('download', { timeout: 8_000 });
-  await page.click('#exportSaveButton');
-  const download = await downloadPromise;
-  if (!/^voxelcraft-seed-.*\.json$/i.test(download.suggestedFilename())) {
-    throw new Error(`Unexpected backup filename: ${download.suggestedFilename()}`);
-  }
-  await download.saveAs('artifacts/exported-world.json');
-  const exported = JSON.parse(await fs.readFile('artifacts/exported-world.json', 'utf8'));
-  if (exported.version !== 4 || !Number.isInteger(exported.seed)) throw new Error('Exported backup is not a v4 world');
+  await page.evaluate(()=>window.VoxelCraftV1.save());
+  const downloadPromise=page.waitForEvent('download',{timeout:10_000});await page.click('#exportButton');const download=await downloadPromise;await download.saveAs('artifacts/v1-export.json');
+  const exported=JSON.parse(await fs.readFile('artifacts/v1-export.json','utf8'));
+  if(exported.format!=='voxelcraft-v1'||exported.payload?.world?.seed!==424242)throw new Error('V1 export invalid');
 
   await page.click('#playButton');
-  await page.waitForFunction(() => {
-    const menu = document.querySelector('#menu');
-    const hud = document.querySelector('#hud');
-    return !menu?.classList.contains('visible') && !hud?.classList.contains('hidden');
-  }, { timeout: 8_000 });
-  await page.waitForTimeout(500);
-
-  const gameplayState = await page.evaluate(() => ({
-    menuVisible: document.querySelector('#menu')?.classList.contains('visible') ?? true,
-    hudHidden: document.querySelector('#hud')?.classList.contains('hidden') ?? true,
-    hearts: document.querySelector('#survivalHud .hearts')?.textContent || '',
-    hunger: document.querySelector('#survivalHud .hunger')?.textContent || '',
-    stats: document.querySelector('#stats')?.textContent || '',
-    pointerLocked: document.pointerLockElement?.id === 'game'
+  await page.waitForFunction(()=>!document.querySelector('#menu')?.classList.contains('visible')&&!document.querySelector('#hud')?.classList.contains('hidden'),{timeout:10_000});
+  await page.waitForTimeout(900);
+  const gameplay=await page.evaluate(()=>({
+    pointerLocked:document.pointerLockElement?.id==='game',
+    hearts:document.querySelector('#survivalHud .hearts')?.textContent||'',
+    hunger:document.querySelector('#survivalHud .hunger')?.textContent||'',
+    xp:document.querySelector('#xpHud')?.textContent||'',
+    stats:document.querySelector('#stats')?.textContent||'',
+    state:window.VoxelCraftV1.state()
   }));
-  if (gameplayState.menuVisible || gameplayState.hudHidden) throw new Error('Gameplay HUD did not activate');
-  if (gameplayState.hearts.length < 10 || gameplayState.hunger.length < 10) throw new Error('Survival bars are incomplete');
-  if (!/XYZ|FPS/.test(gameplayState.stats)) throw new Error(`Stats did not update: ${gameplayState.stats}`);
-  await page.screenshot({ path: 'artifacts/gameplay.png', fullPage: true });
+  if(gameplay.hearts.length<10||gameplay.hunger.length<10||!/Lv/.test(gameplay.xp)||!/XYZ/.test(gameplay.stats))throw new Error(`Gameplay HUD invalid ${JSON.stringify(gameplay)}`);
+  await page.screenshot({path:'artifacts/v1-gameplay.png',fullPage:true});
 
-  if (gameplayState.pointerLocked) {
-    await page.keyboard.press('KeyE');
-    await page.waitForFunction(() => document.querySelector('#inventory')?.classList.contains('visible'), { timeout: 5_000 });
-    const inventoryState = await page.evaluate(() => ({
-      visible: document.querySelector('#inventory')?.classList.contains('visible') ?? false,
-      recipes: document.querySelectorAll('.recipe').length,
-      sections: document.querySelectorAll('.inventory-section').length
-    }));
-    if (!inventoryState.visible || inventoryState.recipes < 10 || inventoryState.sections < 2) {
-      throw new Error(`Inventory/crafting failed: ${JSON.stringify(inventoryState)}`);
-    }
-    await page.screenshot({ path: 'artifacts/inventory.png', fullPage: true });
+  if(gameplay.pointerLocked){
+    await page.keyboard.press('KeyE');await page.waitForFunction(()=>document.querySelector('#inventory')?.classList.contains('visible'),{timeout:6_000});
+    const inv=await page.evaluate(()=>({sections:document.querySelectorAll('.inventory-section').length,recipes:document.querySelectorAll('.recipe').length,visible:document.querySelector('#inventory')?.classList.contains('visible')}));
+    if(!inv.visible||inv.sections<3||inv.recipes<4)throw new Error(`Inventory V1 invalid ${JSON.stringify(inv)}`);
+    await page.screenshot({path:'artifacts/v1-inventory.png',fullPage:true});
   }
 
-  const saveState = await page.evaluate(() => {
-    const raw = localStorage.getItem('voxelcraft-web-save-v4');
-    if (!raw) return null;
-    const save = JSON.parse(raw);
-    return {
-      version: save.version,
-      seed: save.seed,
-      hasInventory: Boolean(save.inventory),
-      hasSurvival: Boolean(save.survival),
-      hasEdits: Array.isArray(save.edits),
-      hasMobs: Array.isArray(save.mobs)
-    };
-  });
-  if (!saveState || saveState.version !== 4 || !saveState.hasInventory || !saveState.hasSurvival || !saveState.hasEdits || !saveState.hasMobs) {
-    throw new Error(`Invalid v4 save: ${JSON.stringify(saveState)}`);
-  }
+  const dimensionTest=await page.evaluate(()=>{const api=window.VoxelCraftV1;api.changeDimension('emberdeep');const a=api.state();api.changeDimension('voidlands');const b=api.state();api.changeDimension('overworld');return{a,b,c:api.state()};});
+  if(dimensionTest.a.dimension!=='emberdeep'||dimensionTest.b.dimension!=='voidlands'||dimensionTest.c.dimension!=='overworld')throw new Error(`Dimension switching failed ${JSON.stringify(dimensionTest)}`);
 
-  if (failedRequests.length) {
-    const critical = failedRequests.filter((entry) => /three|game-v4|survival|mobs|noise|audio|menu-tools/i.test(entry));
-    if (critical.length) errors.push(...critical.map((entry) => `request: ${entry}`));
-  }
-  if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
-
-  console.log(JSON.stringify({ ok: true, ...state, gameplayState, saveState, exportedSeed: exported.seed, failedRequests: failedRequests.length }, null, 2));
-} finally {
-  await browser.close();
-}
+  if(failedRequests.length){const critical=failedRequests.filter((x)=>/three|game-v1|v1\/|audio|noise/i.test(x));if(critical.length)errors.push(...critical.map((x)=>`request: ${x}`));}
+  if(errors.length)throw new Error(`Browser errors:\n${errors.join('\n')}`);
+  console.log(JSON.stringify({ok:true,initial,created,gameplay,dimensionTest,exportedWorld:exported.payload.meta?.name,failedRequests:failedRequests.length},null,2));
+}finally{await browser.close();}
