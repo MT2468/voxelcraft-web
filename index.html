@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#78a7d8" />
-  <meta name="description" content="VoxelCraft Web, um sandbox voxel original em Three.js com terreno procedural, cavernas, mineração e construção." />
+  <meta name="description" content="VoxelCraft Web, sandbox voxel original em Three.js com mundo por chunks, survival, crafting, água, cavernas, mobs e construção." />
   <title>VoxelCraft Web</title>
-  <link rel="stylesheet" href="./style-plus.css" />
+  <link rel="stylesheet" href="./style-v4.css" />
   <script type="importmap">
     {
       "imports": {
@@ -22,13 +22,13 @@
   <div id="hud" class="hidden" aria-hidden="true">
     <div id="stats">FPS: --</div>
     <div id="crosshair" aria-hidden="true"></div>
-    <div id="hint">WASD mover · Espaço pular/subir · Ctrl descer voando · Shift correr · Segure esquerdo para minerar · Direito colocar · 1–9 blocos · E inventário · F voo · F3 debug · Esc pausar</div>
+    <div id="hint">WASD mover · Espaço pular/nadar · Shift correr · Segure esquerdo para minerar/ataque mobs · Direito colocar/comer · 1–9 hotbar · E inventário/crafting · F voo · F3 debug · Esc pausar</div>
     <div id="hotbar" aria-label="Hotbar"></div>
   </div>
 
   <section id="menu" class="panel visible" aria-label="Menu inicial">
     <div class="logo">VOXEL<span>CRAFT</span></div>
-    <p class="tagline">Explore, cave, construa e voe por um mundo voxel procedural.</p>
+    <p class="tagline">Sobreviva, explore chunks sem borda fixa, cave, construa, crafte e enfrente a noite.</p>
     <button id="playButton" class="primary">Entrar no mundo</button>
     <div class="menu-grid">
       <button id="newWorldButton">Novo mundo</button>
@@ -36,19 +36,19 @@
     </div>
     <details>
       <summary>Controles</summary>
-      <p>Mouse olha. WASD move. Espaço pula. Shift corre. Segure o clique esquerdo para minerar e use o direito para colocar blocos. 1–9 ou roda do mouse seleciona a hotbar. E abre o inventário. F alterna voo criativo; voando, Espaço sobe e Ctrl desce. F3 alterna informações de debug. Esc pausa.</p>
+      <p>Mouse olha. WASD move. Espaço pula e ajuda a nadar. Shift corre quando a fome permite. Segure o clique esquerdo para minerar; contra um mob ele ataca. Clique direito coloca o bloco selecionado ou come alimentos. 1–9 e roda do mouse selecionam a hotbar. E abre inventário e crafting. F alterna voo livre de teste; Espaço sobe e Ctrl desce. F3 mostra ou oculta debug. Esc pausa.</p>
     </details>
     <p id="status" class="status">Preparando mundo…</p>
   </section>
 
-  <section id="inventory" class="panel inventory" aria-label="Inventário">
-    <h2>Blocos</h2>
+  <section id="inventory" class="panel inventory" aria-label="Inventário e crafting">
+    <h2>Inventário & Crafting</h2>
     <div id="inventoryGrid"></div>
     <button id="closeInventory">Fechar</button>
   </section>
 
   <div id="toast" role="status" aria-live="polite"></div>
   <noscript>Este jogo precisa de JavaScript.</noscript>
-  <script type="module" src="./src/game-plus.js"></script>
+  <script type="module" src="./src/game-v4.js"></script>
 </body>
 </html>
