@@ -5,12 +5,12 @@ import { observeMainScene } from '../../v1/scene-hook.js';
 export class VerityRenderer{
   constructor(){
     this.mainRenderer=window.VoxelCraftV1?.renderer||null;this.scene=null;this.camera=null;this.time=0;this.lastPhase=-1;this.glitch=0;this.quality=window.VoxelCraftPerformance?.current||{effects:1,mode:'auto'};
-    this.root=new THREE.Group();this.root.name='verity-native-root';this.box=createBox();this.friend=createFriend();this.demon=createDemon();this.root.add(this.box,this.friend,this.demon);
+    this.root=new THREE.Group();this.root.name='verity-native-root';this.box=createBox();this.friend=createFriend();this.demon=createDemon();this.box.visible=this.friend.visible=this.demon.visible=false;this.root.add(this.box,this.friend,this.demon);document.documentElement.dataset.verityRenderer='native';
     this.friendGlow=this.friend.getObjectByName('verity-glow');this.demonGlow=this.demon.getObjectByName('verity-demon-glow');
     this.offScene=this.mainRenderer?observeMainScene(this.mainRenderer,(scene,camera)=>this.attach(scene,camera)):()=>{};
     this.onPerformance=(e)=>{this.quality=e.detail||this.quality;this.applyQuality();};addEventListener('voxelcraft:performance-profile',this.onPerformance);this.applyQuality();
   }
-  attach(scene,camera){if(this.scene!==scene){if(this.scene)this.scene.remove(this.root);this.scene=scene;scene.add(this.root);}this.camera=camera;}
+  attach(scene,camera){if(this.scene!==scene){if(this.scene)this.scene.remove(this.root);this.scene=scene;scene.add(this.root);}this.camera=camera;document.documentElement.dataset.veritySceneAttached='true';}
   applyQuality(){const effects=Math.max(.35,Number(this.quality?.effects)||1);if(this.friendGlow)this.friendGlow.intensity=effects<.65?0:.55*effects;if(this.demonGlow)this.demonGlow.intensity=effects<.58?0:1.15*effects;}
   update(state,player,dt){
     this.time+=dt;
@@ -26,7 +26,7 @@ export class VerityRenderer{
   get yaw(){return this.camera?.rotation?.y||0;}
   get pitch(){return this.camera?.rotation?.x||0;}
   flashGlitch(strength=1){const canvas=this.mainRenderer?.domElement||document.querySelector('#game');canvas?.animate?.([{filter:'none',transform:'translate(0,0)'},{filter:`contrast(${1+strength}) saturate(.2)`,transform:`translate(${strength*3}px,${-strength*2}px)`},{filter:'none',transform:'none'}],{duration:140+strength*80,iterations:2});}
-  dispose(){removeEventListener('voxelcraft:performance-profile',this.onPerformance);this.offScene?.();if(this.scene)this.scene.remove(this.root);disposeObject(this.root);this.scene=null;this.camera=null;}
+  dispose(){removeEventListener('voxelcraft:performance-profile',this.onPerformance);this.offScene?.();if(this.scene)this.scene.remove(this.root);disposeObject(this.root);delete document.documentElement.dataset.veritySceneAttached;this.scene=null;this.camera=null;}
 }
 
 function setWorld(obj,target){obj.position.set(Number(target?.x)||0,Number(target?.y)||0,Number(target?.z)||0);}
