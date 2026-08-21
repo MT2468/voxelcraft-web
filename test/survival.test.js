@@ -69,7 +69,17 @@ test('survival hunger, eating, damage and regeneration stay clamped', () => {
   state.saturation = 5;
   state.update(4.1);
   assert.equal(state.health, 16);
+});
+
+test('death is persistent internally but emits only one respawn signal', () => {
+  const state = new SurvivalState();
   state.takeDamage(999);
   assert.equal(state.health, 0);
+  assert.equal(state.isDead, true);
   assert.equal(state.dead, true);
+  assert.equal(state.dead, false);
+  assert.equal(state.takeDamage(1), false);
+  state.reset();
+  assert.equal(state.isDead, false);
+  assert.equal(state.health, 20);
 });
