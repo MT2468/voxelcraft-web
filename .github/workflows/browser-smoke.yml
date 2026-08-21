@@ -21,7 +21,7 @@ jobs:
           node-version: '24'
       - name: Install Playwright and server dependency
         run: |
-          npm install --no-save playwright@1.62.1 ws@8.18.3
+          npm install --no-save playwright@1.62.1 ws@8.21.3
           npx playwright install --with-deps chromium
       - name: Start static server
         run: |
