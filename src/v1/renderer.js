@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BLOCK, BLOCKS, blockDef, isLiquid, isOpaque } from './catalog.js';
 import { CHUNK_SIZE, WORLD_HEIGHT } from './world.js';
 import { createTextureAtlas } from './texture-atlas.js';
+import { LightEngine } from './lighting.js';
 
 const FACES=[
   {d:[1,0,0],shade:.84,c:[[1,0,0],[1,1,0],[1,1,1],[1,0,1]]},
@@ -14,10 +15,10 @@ const FACES=[
 const q=(cx,cz)=>`${cx},${cz}`;
 
 export class WorldRendererV1{
-  constructor(scene,world,{renderRadius=3}={}){this.scene=scene;this.world=world;this.renderRadius=renderRadius;this.meshes=new Map();this.atlas=createTextureAtlas(THREE,BLOCKS);this.solidMaterial=new THREE.MeshLambertMaterial({map:this.atlas.texture,vertexColors:true,alphaTest:.18});this.liquidMaterial=new THREE.MeshLambertMaterial({map:this.atlas.texture,vertexColors:true,transparent:true,opacity:.7,depthWrite:false,side:THREE.DoubleSide});this.rebuildBudget=1;this.generationBudget=1;this.targetCenter='';this.pending=[];}
-  dispose(){for(const pair of this.meshes.values())for(const mesh of Object.values(pair))if(mesh){this.scene.remove(mesh);mesh.geometry.dispose();}this.solidMaterial.dispose();this.liquidMaterial.dispose();this.atlas.texture.dispose();this.meshes.clear();this.pending=[];}
+  constructor(scene,world,{renderRadius=3}={}){this.scene=scene;this.world=world;this.renderRadius=renderRadius;this.meshes=new Map();this.atlas=createTextureAtlas(THREE,BLOCKS);this.solidMaterial=new THREE.MeshLambertMaterial({map:this.atlas.texture,vertexColors:true,alphaTest:.18});this.liquidMaterial=new THREE.MeshLambertMaterial({map:this.atlas.texture,vertexColors:true,transparent:true,opacity:.7,depthWrite:false,side:THREE.DoubleSide});this.rebuildBudget=1;this.generationBudget=1;this.targetCenter='';this.pending=[];this.lightEngine=new LightEngine(world);}
+  dispose(){for(const pair of this.meshes.values())for(const mesh of Object.values(pair))if(mesh){this.scene.remove(mesh);mesh.geometry.dispose();}this.solidMaterial.dispose();this.liquidMaterial.dispose();this.atlas.texture.dispose();this.lightEngine.dispose();this.meshes.clear();this.pending=[];}
   update(centerX,centerZ){
-    const ccx=Math.floor(centerX/16),ccz=Math.floor(centerZ/16),centerKey=q(ccx,ccz);
+    const ccx=Math.floor(centerX/16),ccz=Math.floor(centerZ/16),centerKey=q(ccx,ccz);this.lightEngine.updateAround(centerX,this.world.surfaceY(centerX,centerZ),centerZ,1);
     if(this.targetCenter!==centerKey){this.targetCenter=centerKey;this.pending=[];for(let dx=-this.renderRadius;dx<=this.renderRadius;dx++)for(let dz=-this.renderRadius;dz<=this.renderRadius;dz++)this.pending.push({cx:ccx+dx,cz:ccz+dz,d:Math.max(Math.abs(dx),Math.abs(dz)),m:Math.abs(dx)+Math.abs(dz)});this.pending.sort((a,b)=>a.d-b.d||a.m-b.m);}
     let generated=0;while(this.pending.length&&generated<this.generationBudget){const next=this.pending.shift(),key=q(next.cx,next.cz);if(!this.world.chunks.has(key)){this.world.ensureChunk(next.cx,next.cz);generated++;}}
     if(!this.world.chunks.has(centerKey))this.world.ensureChunk(ccx,ccz);
@@ -27,7 +28,7 @@ export class WorldRendererV1{
     for(let i=0;i<Math.min(this.rebuildBudget,dirty.length);i++)this.rebuildChunk(dirty[i]);
   }
   rebuildChunk(chunk){const key=q(chunk.cx,chunk.cz),old=this.meshes.get(key);if(old)for(const mesh of Object.values(old))if(mesh){this.scene.remove(mesh);mesh.geometry.dispose();}
-    const solidData=geometryForChunk(this.world,chunk,this.atlas,false),liquidData=geometryForChunk(this.world,chunk,this.atlas,true),pair={solid:null,liquid:null};
+    const solidData=geometryForChunk(this.world,chunk,this.atlas,this.lightEngine,false),liquidData=geometryForChunk(this.world,chunk,this.atlas,this.lightEngine,true),pair={solid:null,liquid:null};
     if(solidData){pair.solid=new THREE.Mesh(solidData,this.solidMaterial);pair.solid.frustumCulled=true;pair.solid.userData.chunk={cx:chunk.cx,cz:chunk.cz};this.scene.add(pair.solid);}
     if(liquidData){pair.liquid=new THREE.Mesh(liquidData,this.liquidMaterial);pair.liquid.renderOrder=2;pair.liquid.userData.chunk={cx:chunk.cx,cz:chunk.cz};this.scene.add(pair.liquid);}
     this.meshes.set(key,pair);chunk.dirty=false;
@@ -35,10 +36,10 @@ export class WorldRendererV1{
   raycastObjects(){const out=[];for(const p of this.meshes.values()){if(p.solid)out.push(p.solid);if(p.liquid)out.push(p.liquid);}return out;}
 }
 
-function geometryForChunk(world,chunk,atlas,liquidPass){const pos=[],norm=[],uv=[],colors=[],ind=[];let base=0;const sx=chunk.cx*16,sz=chunk.cz*16,color=new THREE.Color();
+function geometryForChunk(world,chunk,atlas,lightEngine,liquidPass){const pos=[],norm=[],uv=[],colors=[],ind=[];let base=0;const sx=chunk.cx*16,sz=chunk.cz*16,color=new THREE.Color();
   for(let lx=0;lx<16;lx++)for(let lz=0;lz<16;lz++)for(let y=0;y<WORLD_HEIGHT;y++){const id=chunk.get(lx,y,lz);if(!id||isLiquid(id)!==liquidPass)continue;const def=blockDef(id);if(!def)continue;const x=sx+lx,z=sz+lz;
     for(const face of FACES){const[dx,dy,dz]=face.d,nid=neighborId(world,chunk,lx,y,lz,dx,dy,dz);if(liquidPass){if(nid===id)continue;if(isLiquid(nid)&&nid!==id)continue;}else{if(nid&&isOpaque(nid))continue;if(nid===id&&!def.transparent)continue;}
-      let light=1;if(world.dimension==='overworld'){const sky=fastSkyLight(world,chunk,lx+dx,y+dy,lz+dz,x+dx,z+dz)/15;light=.18+.82*sky;}else light=world.dimension==='emberdeep'?.42:.55;const emits=def.emits||0;if(emits)light=Math.max(light,.45+emits/30);color.setHex(def.color||0xffffff).multiplyScalar(face.shade*light);
+      const combined=lightEngine?.combinedAt(x+dx,y+dy,z+dz)??15;let light=.16+.84*(combined/15);if(world.dimension==='emberdeep')light=Math.max(.30,light);else if(world.dimension==='voidlands')light=Math.max(.34,light);const emits=def.emits||0;if(emits)light=Math.max(light,.45+emits/30);color.setHex(def.color||0xffffff).multiplyScalar(face.shade*light);
       const[u0,v0,u1,v1]=atlas.uvRect(id),faceUv=[[u0,v0],[u0,v1],[u1,v1],[u1,v0]];
       for(let i=0;i<4;i++){const c=face.c[i];pos.push(x+c[0],y+c[1],z+c[2]);norm.push(dx,dy,dz);uv.push(...faceUv[i]);colors.push(color.r,color.g,color.b);}ind.push(base,base+1,base+2,base,base+2,base+3);base+=4;
     }
