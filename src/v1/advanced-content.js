@@ -1,4 +1,5 @@
 import { BLOCK, ITEM, BLOCKS, ITEMS } from './catalog.js';
+import { CraftingSystem } from './systems.js';
 
 export const ABLOCK = Object.freeze({
   REPEATER: 46,
@@ -48,6 +49,25 @@ export function registerAdvancedContent(){
   for(const def of defs){BLOCKS.set(def.id,def);ITEMS.set(def.id,{id:def.id,name:def.name,kind:'block',maxStack:64,block:def.id});}
   ITEMS.set(AITEM.BOAT,{id:AITEM.BOAT,name:'Barco',kind:'vehicle',vehicle:'boat',maxStack:1});
   ITEMS.set(AITEM.FISHING_ROD,{id:AITEM.FISHING_ROD,name:'Vara de pesca',kind:'tool',tool:'fishing_rod',durability:64,maxStack:1});
+  installCraftingExtension();
+}
+
+function installCraftingExtension(){
+  if(CraftingSystem.prototype.__voxelAdvancedInstalled)return;
+  Object.defineProperty(CraftingSystem.prototype,'__voxelAdvancedInstalled',{value:true});
+  const baseAvailable=CraftingSystem.prototype.available,baseCraft=CraftingSystem.prototype.craft;
+  CraftingSystem.prototype.available=function(inventory,grid='2x2'){
+    const existing=baseAvailable.call(this,inventory,grid),seen=new Set(existing.map((r)=>r.id));
+    const extra=ADVANCED_RECIPES.filter((r)=>(r.grid==='any'||r.grid===grid||grid==='3x3')&&r.in.every(([id,n])=>inventory.has(id,n))&&!seen.has(r.id));
+    return [...existing,...extra];
+  };
+  CraftingSystem.prototype.craft=function(inventory,recipeId,grid='2x2'){
+    const advanced=ADVANCED_RECIPES.find((r)=>r.id===recipeId);
+    if(!advanced)return baseCraft.call(this,inventory,recipeId,grid);
+    if(!(advanced.grid==='any'||advanced.grid===grid||grid==='3x3')||!advanced.in.every(([id,n])=>inventory.has(id,n)))return false;
+    const snapshot=inventory.serialize();for(const[id,n]of advanced.in)inventory.remove(id,n);
+    if(!inventory.add(advanced.out[0],advanced.out[1])){inventory.load(snapshot);return false;}return true;
+  };
 }
 
 registerAdvancedContent();
