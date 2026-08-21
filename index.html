@@ -22,7 +22,7 @@
   <div id="hud" class="hidden" aria-hidden="true">
     <div id="stats">FPS: --</div>
     <div id="crosshair" aria-hidden="true"></div>
-    <div id="hint">WASD mover · Espaço pular/nadar · Shift correr · Segure esquerdo para minerar/ataque mobs · Direito colocar/comer · 1–9 hotbar · E inventário/crafting · F voo · F3 debug · Esc pausar</div>
+    <div id="hint">WASD mover · Espaço pular/nadar · Shift correr · Segure esquerdo para minerar/atacar · Direito colocar/comer · 1–9 hotbar · E inventário/crafting · F voo · F3 debug · M som · Esc pausar</div>
     <div id="hotbar" aria-label="Hotbar"></div>
   </div>
 
@@ -36,7 +36,7 @@
     </div>
     <details>
       <summary>Controles</summary>
-      <p>Mouse olha. WASD move. Espaço pula e ajuda a nadar. Shift corre quando a fome permite. Segure o clique esquerdo para minerar; contra um mob ele ataca. Clique direito coloca o bloco selecionado ou come alimentos. 1–9 e roda do mouse selecionam a hotbar. E abre inventário e crafting. F alterna voo livre de teste; Espaço sobe e Ctrl desce. F3 mostra ou oculta debug. Esc pausa.</p>
+      <p>Mouse olha. WASD move. Espaço pula e ajuda a nadar. Shift corre quando a fome permite. Segure o clique esquerdo para minerar; contra um mob ele ataca. Clique direito coloca o bloco selecionado ou come alimentos. 1–9 e roda do mouse selecionam a hotbar. E abre inventário e crafting. F alterna voo livre de teste; Espaço sobe e Ctrl desce. F3 mostra ou oculta debug. M liga/desliga o som. Esc pausa.</p>
     </details>
     <p id="status" class="status">Preparando mundo…</p>
   </section>
@@ -50,5 +50,6 @@
   <div id="toast" role="status" aria-live="polite"></div>
   <noscript>Este jogo precisa de JavaScript.</noscript>
   <script type="module" src="./src/game-v4.js"></script>
+  <script type="module" src="./src/menu-tools.js"></script>
 </body>
 </html>
