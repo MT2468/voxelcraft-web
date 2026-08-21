@@ -192,7 +192,18 @@ export class SurvivalState {
     this.exhaustion = 0;
     this.regenTimer = 0;
     this.starveTimer = 0;
-    this.dead = false;
+    this._deadState = false;
+    this._deathSignal = false;
+  }
+
+  get dead() {
+    if (!this._deathSignal) return false;
+    this._deathSignal = false;
+    return true;
+  }
+
+  get isDead() {
+    return this._deadState;
   }
 
   reset() {
@@ -202,7 +213,8 @@ export class SurvivalState {
     this.exhaustion = 0;
     this.regenTimer = 0;
     this.starveTimer = 0;
-    this.dead = false;
+    this._deadState = false;
+    this._deathSignal = false;
   }
 
   addExhaustion(amount) {
@@ -216,27 +228,30 @@ export class SurvivalState {
   }
 
   takeDamage(amount) {
-    if (this.dead || !Number.isFinite(amount) || amount <= 0) return false;
+    if (this._deadState || !Number.isFinite(amount) || amount <= 0) return false;
     this.health = Math.max(0, this.health - amount);
-    if (this.health <= 0) this.dead = true;
+    if (this.health <= 0) {
+      this._deadState = true;
+      this._deathSignal = true;
+    }
     return true;
   }
 
   heal(amount) {
-    if (this.dead || !Number.isFinite(amount) || amount <= 0) return false;
+    if (this._deadState || !Number.isFinite(amount) || amount <= 0) return false;
     this.health = Math.min(20, this.health + amount);
     return true;
   }
 
   eat(def) {
-    if (!def || def.kind !== 'food' || this.hunger >= 20 || this.dead) return false;
+    if (!def || def.kind !== 'food' || this.hunger >= 20 || this._deadState) return false;
     this.hunger = Math.min(20, this.hunger + (def.hunger || 0));
     this.saturation = Math.min(this.hunger, this.saturation + (def.saturation || 0));
     return true;
   }
 
   update(dt) {
-    if (this.dead) return;
+    if (this._deadState) return;
     if (this.hunger >= 18 && this.health < 20) {
       this.regenTimer += dt;
       if (this.regenTimer >= 4) {
@@ -274,7 +289,8 @@ export class SurvivalState {
     this.hunger = clampNumber(data.hunger, 0, 20, 20);
     this.saturation = clampNumber(data.saturation, 0, 20, 5);
     this.exhaustion = clampNumber(data.exhaustion, 0, 4, 0);
-    this.dead = false;
+    this._deadState = false;
+    this._deathSignal = false;
     return true;
   }
 }
