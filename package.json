@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "check": "node --check src/game.js && node --check src/game-plus.js && node --check src/game-v4.js && node --check src/audio.js && node --check src/noise.js && node --check src/survival.js && node --check src/mobs.js",
+    "check": "node --check src/game.js && node --check src/game-plus.js && node --check src/game-v4.js && node --check src/audio.js && node --check src/noise.js && node --check src/survival.js && node --check src/mobs.js && node --check src/menu-tools.js",
     "test": "node --test test/*.test.js"
   }
 }
