@@ -19,10 +19,13 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - name: Install Playwright and server dependency
+      - name: Audit production dependency
+        run: |
+          npm install --package-lock-only --ignore-scripts
+          npm audit --omit=dev --audit-level=high
+      - name: Install Playwright
         run: |
           npm install --no-save playwright@1.62.1 ws@8.21.3
-          npm audit --audit-level=high
           npx playwright install --with-deps chromium
       - name: Start static server
         run: |
