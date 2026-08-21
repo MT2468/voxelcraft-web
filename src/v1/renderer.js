@@ -3,6 +3,7 @@ import { BLOCK, BLOCKS, blockDef, isLiquid, isOpaque } from './catalog.js';
 import { CHUNK_SIZE, WORLD_HEIGHT } from './world.js';
 import { createTextureAtlas } from './texture-atlas.js';
 import { LightEngine } from './lighting.js';
+import { ChunkWorkerPool } from './worker-pool.js';
 
 const FACES=[
   {d:[1,0,0],shade:.84,c:[[1,0,0],[1,1,0],[1,1,1],[1,0,1]]},
@@ -15,12 +16,12 @@ const FACES=[
 const q=(cx,cz)=>`${cx},${cz}`;
 
 export class WorldRendererV1{
-  constructor(scene,world,{renderRadius=3}={}){this.scene=scene;this.world=world;this.renderRadius=renderRadius;this.meshes=new Map();this.atlas=createTextureAtlas(THREE,BLOCKS);this.solidMaterial=new THREE.MeshLambertMaterial({map:this.atlas.texture,vertexColors:true,alphaTest:.18});this.liquidMaterial=new THREE.MeshLambertMaterial({map:this.atlas.texture,vertexColors:true,transparent:true,opacity:.7,depthWrite:false,side:THREE.DoubleSide});this.rebuildBudget=1;this.generationBudget=1;this.targetCenter='';this.pending=[];this.lightEngine=new LightEngine(world);}
-  dispose(){for(const pair of this.meshes.values())for(const mesh of Object.values(pair))if(mesh){this.scene.remove(mesh);mesh.geometry.dispose();}this.solidMaterial.dispose();this.liquidMaterial.dispose();this.atlas.texture.dispose();this.lightEngine.dispose();this.meshes.clear();this.pending=[];}
+  constructor(scene,world,{renderRadius=3}={}){this.scene=scene;this.world=world;this.renderRadius=renderRadius;this.meshes=new Map();this.atlas=createTextureAtlas(THREE,BLOCKS);this.solidMaterial=new THREE.MeshLambertMaterial({map:this.atlas.texture,vertexColors:true,alphaTest:.18});this.liquidMaterial=new THREE.MeshLambertMaterial({map:this.atlas.texture,vertexColors:true,transparent:true,opacity:.7,depthWrite:false,side:THREE.DoubleSide});this.rebuildBudget=1;this.generationBudget=2;this.targetCenter='';this.pending=[];this.lightEngine=new LightEngine(world);this.workerPool=new ChunkWorkerPool(world,{size:Math.min(3,Math.max(1,(globalThis.navigator?.hardwareConcurrency||4)-1))});}
+  dispose(){for(const pair of this.meshes.values())for(const mesh of Object.values(pair))if(mesh){this.scene.remove(mesh);mesh.geometry.dispose();}this.solidMaterial.dispose();this.liquidMaterial.dispose();this.atlas.texture.dispose();this.lightEngine.dispose();this.workerPool.close();this.meshes.clear();this.pending=[];}
   update(centerX,centerZ){
     const ccx=Math.floor(centerX/16),ccz=Math.floor(centerZ/16),centerKey=q(ccx,ccz);this.lightEngine.updateAround(centerX,this.world.surfaceY(centerX,centerZ),centerZ,1);
-    if(this.targetCenter!==centerKey){this.targetCenter=centerKey;this.pending=[];for(let dx=-this.renderRadius;dx<=this.renderRadius;dx++)for(let dz=-this.renderRadius;dz<=this.renderRadius;dz++)this.pending.push({cx:ccx+dx,cz:ccz+dz,d:Math.max(Math.abs(dx),Math.abs(dz)),m:Math.abs(dx)+Math.abs(dz)});this.pending.sort((a,b)=>a.d-b.d||a.m-b.m);}
-    let generated=0;while(this.pending.length&&generated<this.generationBudget){const next=this.pending.shift(),key=q(next.cx,next.cz);if(!this.world.chunks.has(key)){this.world.ensureChunk(next.cx,next.cz);generated++;}}
+    if(this.targetCenter!==centerKey){this.targetCenter=centerKey;this.pending=[];for(let dx=-this.renderRadius;dx<=this.renderRadius;dx++)for(let dz=-this.renderRadius;dz<=this.renderRadius;dz++){if(dx===0&&dz===0)continue;this.pending.push({cx:ccx+dx,cz:ccz+dz,d:Math.max(Math.abs(dx),Math.abs(dz)),m:Math.abs(dx)+Math.abs(dz)});}this.pending.sort((a,b)=>a.d-b.d||a.m-b.m);}
+    let scheduled=0;while(this.pending.length&&scheduled<this.generationBudget){const next=this.pending.shift(),key=q(next.cx,next.cz);if(this.world.chunks.has(key))continue;scheduled++;this.workerPool.request(next.cx,next.cz).then((chunk)=>{if(!chunk)return;chunk.dirty=true;for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){const neighbor=this.world.chunks.get(q(chunk.cx+dx,chunk.cz+dz));if(neighbor)neighbor.dirty=true;}}).catch((error)=>console.warn('chunk pre-generation failed',error));}
     if(!this.world.chunks.has(centerKey))this.world.ensureChunk(ccx,ccz);
     this.world.unloadFar(ccx,ccz,this.renderRadius+2);
     for(const[key,pair]of this.meshes)if(!this.world.chunks.has(key)){for(const mesh of Object.values(pair))if(mesh){this.scene.remove(mesh);mesh.geometry.dispose();}this.meshes.delete(key);}
