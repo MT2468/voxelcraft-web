@@ -1,5 +1,5 @@
 export class VerityUI{
-  constructor({onSend=()=>{},onInteract=()=>{},onLantern=()=>{},onSettings=()=>{}}={}){this.onSend=onSend;this.onInteract=onInteract;this.onLantern=onLantern;this.onSettings=onSettings;this.tts=true;this.visible=false;this.messages=[];this.build();}
+  constructor({onSend=()=>{},onInteract=()=>{},onLantern=()=>{},onSettings=()=>{}}={}){this.onSend=onSend;this.onInteract=onInteract;this.onLantern=onLantern;this.onSettings=onSettings;this.tts=true;this.visible=false;this.returnToGame=false;this.messages=[];this.build();}
   build(){
     this.prompt=document.createElement('button');this.prompt.id='verityPrompt';this.prompt.textContent='V · Verity';document.body.appendChild(this.prompt);
     this.panel=document.createElement('section');this.panel.id='verityPanel';this.panel.setAttribute('aria-label','Conversa com Verity');this.panel.innerHTML=`<header><div><strong>VERITY</strong><small id="verityMood">...</small></div><button id="verityClose">×</button></header><div id="verityMessages" aria-live="polite"></div><div class="verity-input-row"><input id="verityInput" maxlength="600" placeholder="Fale com Verity..."><button id="verityMic" title="Falar">◉</button><button id="veritySend">Enviar</button></div><div class="verity-actions"><button id="verityInteract">Interagir</button><button id="verityLantern">Lanterna</button><button id="verityVoice">Voz: ligada</button><details><summary>IA</summary><label>Modo <select id="verityAiMode"><option value="offline">Offline</option><option value="remote">Remota</option></select></label><input id="verityEndpoint" placeholder="Endpoint opcional"><input id="verityToken" type="password" placeholder="Token apenas nesta sessão"><button id="verityApplyAi">Aplicar</button></details></div>`;document.body.appendChild(this.panel);
@@ -9,8 +9,8 @@ export class VerityUI{
   }
   submit(){const text=this.input.value.trim();if(!text)return;this.input.value='';this.add('player',text);this.onSend(text);}
   add(role,text,{speak=true}={}){const clean=String(text??'').slice(0,1200);this.messages.push({role,clean,at:Date.now()});if(this.messages.length>60)this.messages.shift();const row=document.createElement('div');row.className=`verity-message ${role}`;row.innerHTML=`<b>${role==='verity'?'Verity':'Você'}</b><span></span>`;row.querySelector('span').textContent=clean;this.messagesEl.appendChild(row);while(this.messagesEl.children.length>60)this.messagesEl.firstChild.remove();this.messagesEl.scrollTop=this.messagesEl.scrollHeight;if(role==='verity'&&speak&&this.tts)this.speak(clean);}
-  open(){this.panel.classList.add('visible');this.visible=true;document.exitPointerLock?.();setTimeout(()=>this.input.focus(),30);}
-  close(){this.panel.classList.remove('visible');this.visible=false;this.input.blur();}
+  open(){if(this.visible)return;this.returnToGame=Boolean(document.pointerLockElement);this.panel.classList.add('visible');this.visible=true;if(this.returnToGame)document.exitPointerLock?.();setTimeout(()=>{if(this.visible){document.querySelector('#menu')?.classList.remove('visible');this.input.focus();}},60);}
+  close(){if(!this.visible)return;this.panel.classList.remove('visible');this.visible=false;this.input.blur();const resume=this.returnToGame;this.returnToGame=false;if(resume){document.querySelector('#menu')?.classList.remove('visible');const canvas=document.querySelector('#game');try{canvas?.requestPointerLock?.();}catch{document.querySelector('#menu')?.classList.add('visible');}}}
   setPrompt(text,active=true){this.prompt.textContent=text||'V · Verity';this.prompt.classList.toggle('active',active);}
   setMood(text){this.mood.textContent=String(text||'');}
   darkness(level=.6,duration=0){this.dark.style.opacity=String(Math.max(0,Math.min(.96,level)));this.dark.classList.toggle('active',level>0);if(duration>0)setTimeout(()=>this.darkness(0),duration);}
@@ -21,4 +21,4 @@ export class VerityUI{
   applySettings(){const mode=this.panel.querySelector('#verityAiMode').value,endpoint=this.panel.querySelector('#verityEndpoint').value.trim(),token=this.panel.querySelector('#verityToken').value;localStorage.setItem('verity-ai-mode',mode);localStorage.setItem('verity-ai-endpoint',endpoint);this.onSettings({mode,endpoint,token});}
   restoreMessages(entries=[]){this.messagesEl.innerHTML='';for(const e of entries.slice(-18))if(e.kind==='player'||e.kind==='verity')this.add(e.kind,e.text,{speak:false});}
 }
-function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));}
