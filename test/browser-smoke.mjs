@@ -12,8 +12,13 @@ page.on('requestfailed',(r)=>failedRequests.push(`${r.url()} :: ${r.failure()?.e
 try{
   const response=await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:30_000});
   if(!response?.ok())throw new Error(`HTTP ${response?.status()} loading game`);
-  await page.waitForFunction(()=>Boolean(window.VoxelCraftV1?.state?.().ready),{timeout:60_000});
-  await page.waitForFunction(()=>/seed/i.test(document.querySelector('#status')?.textContent||''),{timeout:20_000});
+  try{
+    await page.waitForFunction(()=>Boolean(window.VoxelCraftV1?.state?.().ready),null,{timeout:60_000});
+  }catch(error){
+    const diagnostics=await page.evaluate(()=>({status:document.querySelector('#status')?.textContent||'',title:document.title,api:Boolean(window.VoxelCraftV1),bodyText:(document.body?.innerText||'').slice(0,1000)})).catch(()=>({status:'unavailable'}));
+    throw new Error(`V1 boot timeout: ${JSON.stringify(diagnostics)}\n${errors.join('\n')}`);
+  }
+  await page.waitForFunction(()=>/seed/i.test(document.querySelector('#status')?.textContent||''),null,{timeout:20_000});
 
   const initial=await page.evaluate(()=>({
     title:document.title,
@@ -37,7 +42,7 @@ try{
   await page.screenshot({path:'artifacts/v1-menu.png',fullPage:true});
 
   await page.fill('#worldName','CI V1 World');await page.fill('#seedInput','424242');await page.selectOption('#gameModeSelect','survival');await page.selectOption('#difficultySelect','normal');await page.click('#newWorldButton');
-  await page.waitForFunction(()=>/424242/.test(document.querySelector('#status')?.textContent||''),{timeout:30_000});
+  await page.waitForFunction(()=>/424242/.test(document.querySelector('#status')?.textContent||''),null,{timeout:30_000});
   const created=await page.evaluate(()=>window.VoxelCraftV1.state());
   if(created.dimension!=='overworld')throw new Error('New world did not start in overworld');
 
@@ -50,7 +55,7 @@ try{
   if(!commandState.give.ok||!commandState.set.ok||commandState.count<8||commandState.block!==17)throw new Error(`V1 commands failed: ${JSON.stringify(commandState)}`);
 
   await page.click('#settingsButton');
-  await page.waitForFunction(()=>document.querySelector('#settingsPanel')?.classList.contains('visible'));
+  await page.waitForFunction(()=>document.querySelector('#settingsPanel')?.classList.contains('visible'),null,{timeout:5_000});
   const settingState=await page.evaluate(()=>({fov:Boolean(document.querySelector('#setFov')),render:Boolean(document.querySelector('#setRender')),volume:Boolean(document.querySelector('#setVolume'))}));
   if(!settingState.fov||!settingState.render||!settingState.volume)throw new Error(`Settings incomplete ${JSON.stringify(settingState)}`);
   await page.click('#settingsButton');
@@ -61,7 +66,7 @@ try{
   if(exported.format!=='voxelcraft-v1'||exported.payload?.world?.seed!==424242)throw new Error('V1 export invalid');
 
   await page.click('#playButton');
-  await page.waitForFunction(()=>!document.querySelector('#menu')?.classList.contains('visible')&&!document.querySelector('#hud')?.classList.contains('hidden'),{timeout:10_000});
+  await page.waitForFunction(()=>!document.querySelector('#menu')?.classList.contains('visible')&&!document.querySelector('#hud')?.classList.contains('hidden'),null,{timeout:10_000});
   await page.waitForTimeout(900);
   const gameplay=await page.evaluate(()=>({
     pointerLocked:document.pointerLockElement?.id==='game',
@@ -75,7 +80,7 @@ try{
   await page.screenshot({path:'artifacts/v1-gameplay.png',fullPage:true});
 
   if(gameplay.pointerLocked){
-    await page.keyboard.press('KeyE');await page.waitForFunction(()=>document.querySelector('#inventory')?.classList.contains('visible'),{timeout:6_000});
+    await page.keyboard.press('KeyE');await page.waitForFunction(()=>document.querySelector('#inventory')?.classList.contains('visible'),null,{timeout:6_000});
     const inv=await page.evaluate(()=>({sections:document.querySelectorAll('.inventory-section').length,recipes:document.querySelectorAll('.recipe').length,visible:document.querySelector('#inventory')?.classList.contains('visible')}));
     if(!inv.visible||inv.sections<3||inv.recipes<4)throw new Error(`Inventory V1 invalid ${JSON.stringify(inv)}`);
     await page.screenshot({path:'artifacts/v1-inventory.png',fullPage:true});
