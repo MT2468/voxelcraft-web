@@ -59,13 +59,65 @@ try {
   await page.waitForTimeout(700);
   await page.screenshot({ path: 'artifacts/new-world.png', fullPage: true });
 
+  await page.click('#playButton');
+  await page.waitForFunction(() => {
+    const menu = document.querySelector('#menu');
+    const hud = document.querySelector('#hud');
+    return !menu?.classList.contains('visible') && !hud?.classList.contains('hidden');
+  }, { timeout: 8_000 });
+  await page.waitForTimeout(500);
+
+  const gameplayState = await page.evaluate(() => ({
+    menuVisible: document.querySelector('#menu')?.classList.contains('visible') ?? true,
+    hudHidden: document.querySelector('#hud')?.classList.contains('hidden') ?? true,
+    hearts: document.querySelector('#survivalHud .hearts')?.textContent || '',
+    hunger: document.querySelector('#survivalHud .hunger')?.textContent || '',
+    stats: document.querySelector('#stats')?.textContent || '',
+    pointerLocked: document.pointerLockElement?.id === 'game'
+  }));
+  if (gameplayState.menuVisible || gameplayState.hudHidden) throw new Error('Gameplay HUD did not activate');
+  if (gameplayState.hearts.length < 10 || gameplayState.hunger.length < 10) throw new Error('Survival bars are incomplete');
+  if (!/XYZ|FPS/.test(gameplayState.stats)) throw new Error(`Stats did not update: ${gameplayState.stats}`);
+  await page.screenshot({ path: 'artifacts/gameplay.png', fullPage: true });
+
+  if (gameplayState.pointerLocked) {
+    await page.keyboard.press('KeyE');
+    await page.waitForFunction(() => document.querySelector('#inventory')?.classList.contains('visible'), { timeout: 5_000 });
+    const inventoryState = await page.evaluate(() => ({
+      visible: document.querySelector('#inventory')?.classList.contains('visible') ?? false,
+      recipes: document.querySelectorAll('.recipe').length,
+      sections: document.querySelectorAll('.inventory-section').length
+    }));
+    if (!inventoryState.visible || inventoryState.recipes < 6 || inventoryState.sections < 2) {
+      throw new Error(`Inventory/crafting failed: ${JSON.stringify(inventoryState)}`);
+    }
+    await page.screenshot({ path: 'artifacts/inventory.png', fullPage: true });
+  }
+
+  const saveState = await page.evaluate(() => {
+    const raw = localStorage.getItem('voxelcraft-web-save-v4');
+    if (!raw) return null;
+    const save = JSON.parse(raw);
+    return {
+      version: save.version,
+      seed: save.seed,
+      hasInventory: Boolean(save.inventory),
+      hasSurvival: Boolean(save.survival),
+      hasEdits: Array.isArray(save.edits),
+      hasMobs: Array.isArray(save.mobs)
+    };
+  });
+  if (!saveState || saveState.version !== 4 || !saveState.hasInventory || !saveState.hasSurvival || !saveState.hasEdits || !saveState.hasMobs) {
+    throw new Error(`Invalid v4 save: ${JSON.stringify(saveState)}`);
+  }
+
   if (failedRequests.length) {
     const critical = failedRequests.filter((entry) => /three|game-v4|survival|mobs|noise|audio/i.test(entry));
     if (critical.length) errors.push(...critical.map((entry) => `request: ${entry}`));
   }
   if (errors.length) throw new Error(`Browser errors:\n${errors.join('\n')}`);
 
-  console.log(JSON.stringify({ ok: true, ...state, failedRequests: failedRequests.length }, null, 2));
+  console.log(JSON.stringify({ ok: true, ...state, gameplayState, saveState, failedRequests: failedRequests.length }, null, 2));
 } finally {
   await browser.close();
 }
