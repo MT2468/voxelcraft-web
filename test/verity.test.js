@@ -1,0 +1,23 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { VerityState, VerityMemory, VERITY_PHASES } from '../src/mods/verity/state.js';
+import { VerityBrain, OfflineVerityProvider } from '../src/mods/verity/brain.js';
+import { VBLOCK, VITEM, VERITY_RECIPES } from '../src/mods/verity/content.js';
+import { WorldV1 } from '../src/v1/world.js';
+import { BLOCKS, ITEMS, ITEM } from '../src/v1/catalog.js';
+import { InventoryV1, CraftingSystem } from '../src/v1/systems.js';
+import { initializeVerityLandmarks, generateEastVillage, distanceToShrine } from '../src/mods/verity/structures.js';
+
+test('Verity memory persists facts and bounded history',()=>{const m=new VerityMemory();m.setFact('playerName','Tester');for(let i=0;i<200;i++)m.remember('player',`line ${i}`);assert.equal(m.getFact('playerName'),'Tester');assert.equal(m.entries.length,180);const copy=new VerityMemory();copy.load(m.serialize());assert.equal(copy.entries.at(-1).text,'line 199');});
+
+test('relationship and exposure progress through the horror states',()=>{const s=new VerityState(42);s.box.opened=true;s.evaluatePhase();assert.equal(s.phase,VERITY_PHASES.FRIEND);s.exposure=400;s.evaluatePhase();assert.equal(s.phase,VERITY_PHASES.ATTACHED);s.exposure=1000;s.evaluatePhase();assert.equal(s.phase,VERITY_PHASES.UNCANNY);s.exposure=1800;s.evaluatePhase();assert.equal(s.phase,VERITY_PHASES.STALKING);s.exposure=2800;s.evaluatePhase();assert.equal(s.phase,VERITY_PHASES.DEMON);s.apply('insult',2);assert.ok(s.resentment>=8);});
+
+test('Verity state survives serialization including demon and ending',()=>{const a=new VerityState(9);a.box.opened=true;a.forcePhase('demon');a.demon.health=73;a.memory.remember('player','eu lembro');a.finish('rupture');const b=new VerityState(9);assert.equal(b.load(a.serialize()),true);assert.equal(b.ending,'rupture');assert.equal(b.phase,VERITY_PHASES.AFTERMATH);assert.equal(b.demon.health,73);assert.equal(b.memory.recent(1)[0].text,'rupture');});
+
+test('offline brain answers real context and supports reconciliation path',async()=>{const s=new VerityState(1);s.box.opened=true;s.forcePhase('friend');const brain=new VerityBrain(s,{offline:new OfflineVerityProvider(()=>0)});const health=await brain.ask('quanto de vida eu tenho?',{health:13,hunger:8});assert.match(health,/13/);s.forcePhase('demon');s.bond=80;s.resentment=10;const ending=await brain.ask('eu confio em você, volta',{health:20,hunger:20});assert.equal(ending,'__ENDING_RECONCILE__');assert.ok(s.metrics.questions>=2);});
+
+test('Verity content is registered and lantern has a real recipe',()=>{assert.equal(BLOCKS.get(VBLOCK.CORRUPTED_STONE)?.name,'Pedra Corrompida');assert.equal(ITEMS.get(VITEM.VERITY_LANTERN)?.tool,'verity_lantern');assert.ok(VERITY_RECIPES.some(r=>r.out[0]===VITEM.VERITY_LANTERN));});
+
+test('Verity crafting extension produces pale bricks',()=>{const inv=new InventoryV1();inv.add(ITEM.STONE,4);inv.add(VITEM.VERITY_SHARD,1);const crafting=new CraftingSystem();assert.equal(crafting.craft(inv,'pale-bricks','3x3'),true);assert.equal(inv.count(VBLOCK.PALE_BRICKS),4);});
+
+test('east village landmarks are deterministic and generate a shrine',()=>{const world=new WorldV1(123456,'overworld'),state=new VerityState(123456),player={x:.5,y:world.surfaceY(.5,.5),z:.5};initializeVerityLandmarks(world,state,player);const first={...state.eastVillage};assert.ok(first.x>100);generateEastVillage(world,state);assert.equal(state.eastVillage.generated,true);assert.ok(distanceToShrine(state,{x:first.shrineX,z:first.shrineZ})<.01);const sy=world.surfaceY(first.shrineX,first.shrineZ);let found=false;for(let y=Math.max(1,sy-3);y<Math.min(95,sy+8);y++)if(world.getBlock(first.shrineX,y,first.shrineZ)===VBLOCK.VERITY_SIGIL)found=true;assert.equal(found,true);});
