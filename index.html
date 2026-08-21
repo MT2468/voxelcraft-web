@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#78a7d8" />
-  <meta name="description" content="VoxelCraft V1, sandbox voxel 3D original com survival, crafting, dimensões, automação, clima, mobs e multiplayer opcional." />
-  <title>VoxelCraft V1</title>
+  <meta name="description" content="VoxelCraft V1 com a expansão Verity: survival voxel, IA companheira, horror adaptativo e multiplayer opcional." />
+  <title>VoxelCraft V1 · Verity</title>
   <link rel="stylesheet" href="./style-v1.css" />
   <link rel="stylesheet" href="./style-guide.css" />
+  <link rel="stylesheet" href="./style-verity.css" />
   <script type="importmap">
     {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"}}
   </script>
@@ -18,13 +19,13 @@
   <div id="hud" class="hidden" aria-hidden="true">
     <div id="stats">FPS --</div>
     <div id="crosshair" aria-hidden="true"></div>
-    <div id="hint">WASD mover · Espaço pular/nadar · Shift correr · Esquerdo minerar/atacar · Direito usar/colocar · 1–9 hotbar · E inventário · G guia/mapa · T chat · / comandos · F voo no Creative · F3 debug · Esc pausar</div>
+    <div id="hint">WASD mover · Espaço pular · Shift correr · Esquerdo minerar/atacar · Direito usar/colocar · 1–9 hotbar · E inventário · G guia · V Verity · L lanterna · R veículo · T chat · / comandos · F voo Creative · F3 debug · Esc pausar</div>
     <div id="hotbar" aria-label="Hotbar"></div>
   </div>
 
   <section id="menu" class="panel visible" aria-label="Menu principal">
-    <div class="logo">VOXEL<span>CRAFT</span><small>V1</small></div>
-    <p class="tagline">Um mundo voxel próprio: sobreviva, construa, automatize, atravesse dimensões e enfrente o Vazio.</p>
+    <div class="logo">VOXEL<span>CRAFT</span><small>V1 · VERITY</small></div>
+    <p class="tagline">Um mundo voxel próprio. Há uma caixa em algum lugar perto de você.</p>
 
     <div class="world-row">
       <label>Mundo salvo<select id="worldSelect" aria-label="Mundo salvo"></select></label>
@@ -55,11 +56,12 @@
 
     <details>
       <summary>Controles e recursos</summary>
-      <p>Segure o clique esquerdo para minerar. Mire em mobs para atacar. Clique direito usa blocos funcionais, comida, poções, baldes e itens. Plante sementes em terra, use bancadas e fornalhas, ligue circuitos Flux, construa portais de obsidiana e explore Emberdeep/Voidlands. Em Creative, F alterna voo.</p>
-      <p><strong>Guia de Campo:</strong> G abre mapa descoberto, comércio em cabanas, pesca, alquimia e estatísticas.</p>
-      <p><strong>Chat/comandos:</strong> T abre o chat e / abre diretamente um comando. Use <code>/help</code>.</p>
+      <p>Segure o clique esquerdo para minerar. Mire em mobs para atacar. Clique direito usa blocos funcionais, comida, poções, baldes e itens. Plante sementes, automatize com Flux, atravesse Emberdeep/Voidlands e use R para veículos.</p>
+      <p><strong>Verity:</strong> procure a caixa, pressione V perto dela e converse com a criatura. L ativa a Lanterna de Verity quando ela estiver selecionada. Caixa, Verity e Demon agora pertencem à mesma cena 3D do mundo, com iluminação, neblina e oclusão reais.</p>
+      <p><strong>Desempenho:</strong> em Configurações, use Auto para resolução dinâmica ou PC fraco para um preset conservador. O jogo reduz primeiro custo invisível antes da distância de visão.</p>
+      <p><strong>Guia de Campo:</strong> G abre mapa descoberto, comércio, pesca, alquimia e estatísticas. T abre chat e / abre comandos.</p>
     </details>
-    <p id="status" class="status">Preparando motor V1…</p>
+    <p id="status" class="status">Preparando VoxelCraft + Verity…</p>
   </section>
 
   <section id="inventory" class="panel inventory" aria-label="Inventário e crafting">
@@ -72,7 +74,7 @@
 
   <section id="deathScreen" class="death-screen" aria-label="Tela de morte">
     <h1>Você morreu</h1>
-    <p>O mundo continua. Seu próximo passo é voltar mais preparado.</p>
+    <p>O mundo continua. Algumas coisas também.</p>
     <button id="respawnButton" class="primary">Renascer</button>
   </section>
 
@@ -80,5 +82,7 @@
   <noscript>VoxelCraft V1 precisa de JavaScript e WebGL.</noscript>
   <script type="module" src="./src/game-v1.js"></script>
   <script type="module" src="./src/v1/addons.js"></script>
+  <script type="module" src="./src/v1/performance.js"></script>
+  <script type="module" src="./src/mods/verity/index.js"></script>
 </body>
 </html>

@@ -4,92 +4,32 @@ import fs from 'node:fs/promises';
 await fs.mkdir('artifacts',{recursive:true});
 const browser=await chromium.launch({headless:true,args:['--use-gl=swiftshader','--enable-webgl','--ignore-gpu-blocklist']});
 const page=await browser.newPage({viewport:{width:1366,height:768},acceptDownloads:true});
-const errors=[],failedRequests=[];
-page.on('pageerror',(e)=>errors.push(`pageerror: ${e.message}`));
-page.on('console',(m)=>{if(m.type()==='error')errors.push(`console: ${m.text()}`);});
-page.on('requestfailed',(r)=>failedRequests.push(`${r.url()} :: ${r.failure()?.errorText||'failed'}`));
-
+const errors=[],failedRequests=[];page.on('pageerror',(e)=>errors.push(`pageerror: ${e.message}`));page.on('console',(m)=>{if(m.type()==='error')errors.push(`console: ${m.text()}`);});page.on('requestfailed',(r)=>failedRequests.push(`${r.url()} :: ${r.failure()?.errorText||'failed'}`));
 try{
-  const response=await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:30_000});
-  if(!response?.ok())throw new Error(`HTTP ${response?.status()} loading game`);
-  try{
-    await page.waitForFunction(()=>Boolean(window.VoxelCraftV1?.state?.().ready),null,{timeout:60_000});
-  }catch(error){
-    const diagnostics=await page.evaluate(()=>({status:document.querySelector('#status')?.textContent||'',title:document.title,api:Boolean(window.VoxelCraftV1),bodyText:(document.body?.innerText||'').slice(0,1000)})).catch(()=>({status:'unavailable'}));
-    throw new Error(`V1 boot timeout: ${JSON.stringify(diagnostics)}\n${errors.join('\n')}`);
-  }
+  const response=await page.goto('http://127.0.0.1:4173/',{waitUntil:'domcontentloaded',timeout:30_000});if(!response?.ok())throw new Error(`HTTP ${response?.status()} loading game`);
+  try{await page.waitForFunction(()=>Boolean(window.VoxelCraftV1?.state?.().ready&&window.VerityMod?.state&&window.VoxelCraftPerformance?.current),null,{timeout:60_000});}catch(error){const diagnostics=await page.evaluate(()=>({status:document.querySelector('#status')?.textContent||'',title:document.title,api:Boolean(window.VoxelCraftV1),verity:Boolean(window.VerityMod),performance:Boolean(window.VoxelCraftPerformance),bodyText:(document.body?.innerText||'').slice(0,1000)})).catch(()=>({status:'unavailable'}));throw new Error(`V1/Verity boot timeout: ${JSON.stringify(diagnostics)}\n${errors.join('\n')}`);}
   await page.waitForFunction(()=>/seed/i.test(document.querySelector('#status')?.textContent||''),null,{timeout:20_000});
+  const initial=await page.evaluate(()=>({title:document.title,state:window.VoxelCraftV1.state(),canvas:[document.querySelector('#game')?.width||0,document.querySelector('#game')?.height||0],webgl:Boolean(document.querySelector('#game')?.getContext('webgl2')||document.querySelector('#game')?.getContext('webgl')),verityCanvas:Boolean(document.querySelector('#verityCanvas')),menu:document.querySelector('#menu')?.classList.contains('visible'),hotbar:document.querySelector('#hotbar')?.children.length||0,hasWorldSelect:Boolean(document.querySelector('#worldSelect')),hasSettings:Boolean(document.querySelector('#settingsPanel')),hasMultiplayer:Boolean(document.querySelector('#multiplayerPanel')),hasChat:Boolean(document.querySelector('#chatInput')),hasSurvival:Boolean(document.querySelector('#survivalHud')),hasBoss:Boolean(document.querySelector('#bossBar')),hasVerityPrompt:Boolean(document.querySelector('#verityPrompt')),verityPhase:window.VerityMod.state.phase,performance:window.VoxelCraftPerformance.current}));
+  if(!initial.title.includes('VoxelCraft V1')||!initial.webgl||!initial.canvas[0]||!initial.canvas[1])throw new Error(`Initial WebGL invalid ${JSON.stringify(initial)}`);if(!initial.menu||initial.hotbar!==9||!initial.hasVerityPrompt||initial.verityCanvas)throw new Error(`Native Verity shell invalid ${JSON.stringify(initial)}`);for(const key of['hasWorldSelect','hasSettings','hasMultiplayer','hasChat','hasSurvival','hasBoss'])if(!initial[key])throw new Error(`Missing V1 UI ${key}`);await page.screenshot({path:'artifacts/v1-menu.png',fullPage:true});
 
-  const initial=await page.evaluate(()=>({
-    title:document.title,
-    state:window.VoxelCraftV1.state(),
-    canvas:[document.querySelector('#game')?.width||0,document.querySelector('#game')?.height||0],
-    webgl:Boolean(document.querySelector('#game')?.getContext('webgl2')||document.querySelector('#game')?.getContext('webgl')),
-    menu:document.querySelector('#menu')?.classList.contains('visible'),
-    hotbar:document.querySelector('#hotbar')?.children.length||0,
-    hasWorldSelect:Boolean(document.querySelector('#worldSelect')),
-    hasSeed:Boolean(document.querySelector('#seedInput')),
-    hasSettings:Boolean(document.querySelector('#settingsPanel')),
-    hasMultiplayer:Boolean(document.querySelector('#multiplayerPanel')),
-    hasChat:Boolean(document.querySelector('#chatInput')),
-    hasSurvival:Boolean(document.querySelector('#survivalHud')),
-    hasBoss:Boolean(document.querySelector('#bossBar'))
-  }));
-  if(!initial.title.includes('VoxelCraft V1'))throw new Error(`Unexpected title ${initial.title}`);
-  if(!initial.webgl||!initial.canvas[0]||!initial.canvas[1])throw new Error('WebGL canvas unavailable');
-  if(!initial.menu||initial.hotbar!==9)throw new Error(`Initial shell invalid: ${JSON.stringify(initial)}`);
-  for(const key of['hasWorldSelect','hasSeed','hasSettings','hasMultiplayer','hasChat','hasSurvival','hasBoss'])if(!initial[key])throw new Error(`Missing V1 UI ${key}`);
-  await page.screenshot({path:'artifacts/v1-menu.png',fullPage:true});
+  const perfTest=await page.evaluate(()=>{window.VoxelCraftPerformance.setProfile('low');const low={...window.VoxelCraftPerformance.current};window.VoxelCraftPerformance.setProfile('auto');return{low,auto:{...window.VoxelCraftPerformance.current},hasControl:Boolean(document.querySelector('#perfProfile'))};});if(!perfTest.hasControl||perfTest.low.mode!=='low'||perfTest.low.scale>.85)throw new Error(`Performance profiles invalid ${JSON.stringify(perfTest)}`);
 
-  await page.fill('#worldName','CI V1 World');await page.fill('#seedInput','424242');await page.selectOption('#gameModeSelect','survival');await page.selectOption('#difficultySelect','normal');await page.click('#newWorldButton');
-  await page.waitForFunction(()=>/424242/.test(document.querySelector('#status')?.textContent||''),null,{timeout:30_000});
-  const created=await page.evaluate(()=>window.VoxelCraftV1.state());
-  if(created.dimension!=='overworld')throw new Error('New world did not start in overworld');
+  await page.fill('#worldName','CI Verity World');await page.fill('#seedInput','424242');await page.selectOption('#gameModeSelect','survival');await page.selectOption('#difficultySelect','normal');await page.click('#newWorldButton');await page.waitForFunction(()=>/424242/.test(document.querySelector('#status')?.textContent||''),null,{timeout:30_000});await page.waitForTimeout(300);const created=await page.evaluate(()=>window.VoxelCraftV1.state());if(created.dimension!=='overworld')throw new Error('New world did not start in overworld');
 
-  const commandState=await page.evaluate(()=>{
-    const api=window.VoxelCraftV1;
-    const give=api.command('/give log 8');
-    const set=api.command('/setblock 2 40 2 torch');
-    return{give,set,count:api.inventory.count(5),block:api.world.getBlock(2,40,2)};
-  });
-  if(!commandState.give.ok||!commandState.set.ok||commandState.count<8||commandState.block!==17)throw new Error(`V1 commands failed: ${JSON.stringify(commandState)}`);
+  const verityAwaken=await page.evaluate(async()=>{const api=window.VoxelCraftV1,mod=window.VerityMod,b=mod.state.box;api.command(`/tp ${b.x} ${b.y} ${b.z}`);await mod.interact();await new Promise(r=>setTimeout(r,120));const reply=await mod.ask('quanto de vida eu tenho?');await mod.save();return{opened:mod.state.box.opened,active:mod.state.verity.active,phase:mod.state.phase,reply,messages:document.querySelectorAll('.verity-message').length,prompt:document.querySelector('#verityPrompt')?.textContent,nativeNoOverlay:!document.querySelector('#verityCanvas')};});
+  if(!verityAwaken.opened||!verityAwaken.active||verityAwaken.phase!==1||!verityAwaken.nativeNoOverlay||!/vida|13|20/i.test(verityAwaken.reply))throw new Error(`Verity awakening invalid ${JSON.stringify(verityAwaken)}`);await page.screenshot({path:'artifacts/verity-friend.png',fullPage:true});
+  const verityHorror=await page.evaluate(async()=>{window.VerityMod.forcePhase('uncanny');await new Promise(r=>setTimeout(r,180));const uncanny={phase:window.VerityMod.state.phase,horror:document.body.classList.contains('verity-horror')};window.VerityMod.forcePhase('demon');await new Promise(r=>setTimeout(r,220));await window.VerityMod.save();return{uncanny,phase:window.VerityMod.state.phase,demon:window.VerityMod.state.demon.active,visible:window.VerityMod.state.demon.visible,body:document.body.classList.contains('verity-demon'),overlayCanvas:Boolean(document.querySelector('#verityCanvas'))};});
+  if(verityHorror.uncanny.phase!==3||!verityHorror.uncanny.horror||verityHorror.phase!==5||!verityHorror.demon||!verityHorror.body||verityHorror.overlayCanvas)throw new Error(`Verity horror transition invalid ${JSON.stringify(verityHorror)}`);await page.screenshot({path:'artifacts/verity-demon.png',fullPage:true});
 
-  await page.click('#settingsButton');
-  await page.waitForFunction(()=>document.querySelector('#settingsPanel')?.classList.contains('visible'),null,{timeout:5_000});
-  const settingState=await page.evaluate(()=>({fov:Boolean(document.querySelector('#setFov')),render:Boolean(document.querySelector('#setRender')),volume:Boolean(document.querySelector('#setVolume'))}));
-  if(!settingState.fov||!settingState.render||!settingState.volume)throw new Error(`Settings incomplete ${JSON.stringify(settingState)}`);
-  await page.click('#settingsButton');
+  const commandState=await page.evaluate(()=>{const api=window.VoxelCraftV1,give=api.command('/give log 8'),set=api.command('/setblock 2 40 2 torch');return{give,set,count:api.inventory.count(5),block:api.world.getBlock(2,40,2)};});if(!commandState.give.ok||!commandState.set.ok||commandState.count<8||commandState.block!==17)throw new Error(`V1 commands failed: ${JSON.stringify(commandState)}`);
+  await page.click('#settingsButton');await page.waitForFunction(()=>document.querySelector('#settingsPanel')?.classList.contains('visible'),null,{timeout:5_000});const settingState=await page.evaluate(()=>({fov:Boolean(document.querySelector('#setFov')),render:Boolean(document.querySelector('#setRender')),volume:Boolean(document.querySelector('#setVolume')),perf:Boolean(document.querySelector('#perfProfile'))}));if(!settingState.fov||!settingState.render||!settingState.volume||!settingState.perf)throw new Error(`Settings incomplete ${JSON.stringify(settingState)}`);await page.click('#settingsButton');
+  await page.evaluate(()=>window.VoxelCraftV1.save());const downloadPromise=page.waitForEvent('download',{timeout:10_000});await page.click('#exportButton');const download=await downloadPromise;await download.saveAs('artifacts/v1-export.json');const exported=JSON.parse(await fs.readFile('artifacts/v1-export.json','utf8'));if(exported.format!=='voxelcraft-v1'||exported.payload?.world?.seed!==424242)throw new Error('V1 export invalid');
 
-  await page.evaluate(()=>window.VoxelCraftV1.save());
-  const downloadPromise=page.waitForEvent('download',{timeout:10_000});await page.click('#exportButton');const download=await downloadPromise;await download.saveAs('artifacts/v1-export.json');
-  const exported=JSON.parse(await fs.readFile('artifacts/v1-export.json','utf8'));
-  if(exported.format!=='voxelcraft-v1'||exported.payload?.world?.seed!==424242)throw new Error('V1 export invalid');
+  await page.click('#playButton');await page.waitForFunction(()=>!document.querySelector('#menu')?.classList.contains('visible')&&!document.querySelector('#hud')?.classList.contains('hidden'),null,{timeout:10_000});await page.waitForTimeout(900);const gameplay=await page.evaluate(()=>({pointerLocked:document.pointerLockElement?.id==='game',hearts:document.querySelector('#survivalHud .hearts')?.textContent||'',hunger:document.querySelector('#survivalHud .hunger')?.textContent||'',xp:document.querySelector('#xpHud')?.textContent||'',stats:document.querySelector('#stats')?.textContent||'',state:window.VoxelCraftV1.state(),performance:window.VoxelCraftPerformance.current}));if(gameplay.hearts.length<10||gameplay.hunger.length<10||!/Lv/.test(gameplay.xp)||!/XYZ/.test(gameplay.stats))throw new Error(`Gameplay HUD invalid ${JSON.stringify(gameplay)}`);await page.screenshot({path:'artifacts/v1-gameplay.png',fullPage:true});
+  if(gameplay.pointerLocked){await page.keyboard.press('KeyE');await page.waitForFunction(()=>document.querySelector('#inventory')?.classList.contains('visible'),null,{timeout:6_000});const inv=await page.evaluate(()=>({sections:document.querySelectorAll('.inventory-section').length,recipes:document.querySelectorAll('.recipe').length,visible:document.querySelector('#inventory')?.classList.contains('visible')}));if(!inv.visible||inv.sections<3||inv.recipes<4)throw new Error(`Inventory V1 invalid ${JSON.stringify(inv)}`);await page.screenshot({path:'artifacts/v1-inventory.png',fullPage:true});}
+  const dimensionTest=await page.evaluate(()=>{const api=window.VoxelCraftV1;api.changeDimension('emberdeep');const a=api.state();api.changeDimension('voidlands');const b=api.state();api.changeDimension('overworld');return{a,b,c:api.state()};});if(dimensionTest.a.dimension!=='emberdeep'||dimensionTest.b.dimension!=='voidlands'||dimensionTest.c.dimension!=='overworld')throw new Error(`Dimension switching failed ${JSON.stringify(dimensionTest)}`);
 
-  await page.click('#playButton');
-  await page.waitForFunction(()=>!document.querySelector('#menu')?.classList.contains('visible')&&!document.querySelector('#hud')?.classList.contains('hidden'),null,{timeout:10_000});
-  await page.waitForTimeout(900);
-  const gameplay=await page.evaluate(()=>({
-    pointerLocked:document.pointerLockElement?.id==='game',
-    hearts:document.querySelector('#survivalHud .hearts')?.textContent||'',
-    hunger:document.querySelector('#survivalHud .hunger')?.textContent||'',
-    xp:document.querySelector('#xpHud')?.textContent||'',
-    stats:document.querySelector('#stats')?.textContent||'',
-    state:window.VoxelCraftV1.state()
-  }));
-  if(gameplay.hearts.length<10||gameplay.hunger.length<10||!/Lv/.test(gameplay.xp)||!/XYZ/.test(gameplay.stats))throw new Error(`Gameplay HUD invalid ${JSON.stringify(gameplay)}`);
-  await page.screenshot({path:'artifacts/v1-gameplay.png',fullPage:true});
-
-  if(gameplay.pointerLocked){
-    await page.keyboard.press('KeyE');await page.waitForFunction(()=>document.querySelector('#inventory')?.classList.contains('visible'),null,{timeout:6_000});
-    const inv=await page.evaluate(()=>({sections:document.querySelectorAll('.inventory-section').length,recipes:document.querySelectorAll('.recipe').length,visible:document.querySelector('#inventory')?.classList.contains('visible')}));
-    if(!inv.visible||inv.sections<3||inv.recipes<4)throw new Error(`Inventory V1 invalid ${JSON.stringify(inv)}`);
-    await page.screenshot({path:'artifacts/v1-inventory.png',fullPage:true});
-  }
-
-  const dimensionTest=await page.evaluate(()=>{const api=window.VoxelCraftV1;api.changeDimension('emberdeep');const a=api.state();api.changeDimension('voidlands');const b=api.state();api.changeDimension('overworld');return{a,b,c:api.state()};});
-  if(dimensionTest.a.dimension!=='emberdeep'||dimensionTest.b.dimension!=='voidlands'||dimensionTest.c.dimension!=='overworld')throw new Error(`Dimension switching failed ${JSON.stringify(dimensionTest)}`);
-
-  if(failedRequests.length){const critical=failedRequests.filter((x)=>/three|game-v1|v1\/|audio|noise/i.test(x));if(critical.length)errors.push(...critical.map((x)=>`request: ${x}`));}
-  if(errors.length)throw new Error(`Browser errors:\n${errors.join('\n')}`);
-  console.log(JSON.stringify({ok:true,initial,created,gameplay,dimensionTest,exportedWorld:exported.payload.meta?.name,failedRequests:failedRequests.length},null,2));
+  await page.reload({waitUntil:'domcontentloaded'});await page.waitForFunction(()=>Boolean(window.VoxelCraftV1?.state?.().ready&&window.VerityMod?.state&&window.VoxelCraftPerformance?.current),null,{timeout:60_000});await page.waitForTimeout(250);const persisted=await page.evaluate(()=>({world:window.VoxelCraftV1.state().worldId,opened:window.VerityMod.state.box.opened,phase:window.VerityMod.state.phase,demon:window.VerityMod.state.demon.active,noOverlay:!document.querySelector('#verityCanvas')}));if(!persisted.opened||persisted.phase!==5||!persisted.demon||!persisted.noOverlay)throw new Error(`Verity persistence failed ${JSON.stringify(persisted)}`);
+  if(failedRequests.length){const critical=failedRequests.filter((x)=>/three|game-v1|v1\/|mods\/verity|audio|noise/i.test(x));if(critical.length)errors.push(...critical.map((x)=>`request: ${x}`));}if(errors.length)throw new Error(`Browser errors:\n${errors.join('\n')}`);
+  console.log(JSON.stringify({ok:true,initial,perfTest,created,verityAwaken,verityHorror,persisted,gameplay,dimensionTest,exportedWorld:exported.payload.meta?.name,failedRequests:failedRequests.length},null,2));
 }finally{await browser.close();}
