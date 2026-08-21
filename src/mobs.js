@@ -4,13 +4,16 @@ import { ITEM } from './survival.js';
 const sharedGeometry = {
   head: new THREE.BoxGeometry(0.62, 0.62, 0.62),
   body: new THREE.BoxGeometry(0.72, 0.9, 0.42),
+  skeletonBody: new THREE.BoxGeometry(0.48, 0.82, 0.3),
   limb: new THREE.BoxGeometry(0.23, 0.72, 0.23),
   animalBody: new THREE.BoxGeometry(0.95, 0.62, 0.52),
   animalHead: new THREE.BoxGeometry(0.55, 0.5, 0.5),
   snout: new THREE.BoxGeometry(0.25, 0.2, 0.3),
   chickenBody: new THREE.BoxGeometry(0.62, 0.58, 0.55),
   chickenHead: new THREE.BoxGeometry(0.42, 0.42, 0.42),
-  beak: new THREE.BoxGeometry(0.22, 0.15, 0.28)
+  beak: new THREE.BoxGeometry(0.22, 0.15, 0.28),
+  wattle: new THREE.BoxGeometry(0.12, 0.18, 0.12),
+  chickenLeg: new THREE.BoxGeometry(0.1, 0.36, 0.1)
 };
 
 const VALID_TYPES = new Set(['pig', 'cow', 'chicken', 'zombie', 'skeleton']);
@@ -38,6 +41,7 @@ export class MobSystem {
   }
 
   update(dt, playerPosition, daylight) {
+    if (typeof document !== 'undefined' && document.pointerLockElement == null) return;
     this.spawnTimer -= dt;
     if (this.spawnTimer <= 0) {
       this.spawnTimer = 2.2;
@@ -336,7 +340,7 @@ function createSkeleton(id) {
   const dark = new THREE.MeshLambertMaterial({ color: 0x74756f });
   const materials = [bone, dark];
   const head = part(sharedGeometry.head, bone, 0, 1.72, 0, id);
-  const body = part(new THREE.BoxGeometry(0.48, 0.82, 0.3), dark, 0, 1.0, 0, id);
+  const body = part(sharedGeometry.skeletonBody, dark, 0, 1.0, 0, id);
   const leftArm = part(sharedGeometry.limb, bone, -0.4, 1.08, 0, id);
   const rightArm = part(sharedGeometry.limb, bone, 0.4, 1.08, 0, id);
   const leftLeg = part(sharedGeometry.limb, bone, -0.16, 0.36, 0, id);
@@ -381,9 +385,9 @@ function createChicken(id) {
   const body = part(sharedGeometry.chickenBody, white, 0, 0.55, 0, id);
   const head = part(sharedGeometry.chickenHead, white, 0, 0.95, 0.24, id);
   const beak = part(sharedGeometry.beak, yellow, 0, 0.94, 0.55, id);
-  const wattle = part(new THREE.BoxGeometry(0.12, 0.18, 0.12), red, 0, 0.78, 0.49, id);
-  const leftLeg = part(new THREE.BoxGeometry(0.1, 0.36, 0.1), yellow, -0.15, 0.2, 0, id);
-  const rightLeg = part(new THREE.BoxGeometry(0.1, 0.36, 0.1), yellow, 0.15, 0.2, 0, id);
+  const wattle = part(sharedGeometry.wattle, red, 0, 0.78, 0.49, id);
+  const leftLeg = part(sharedGeometry.chickenLeg, yellow, -0.15, 0.2, 0, id);
+  const rightLeg = part(sharedGeometry.chickenLeg, yellow, 0.15, 0.2, 0, id);
   group.add(body, head, beak, wattle, leftLeg, rightLeg);
   return baseMob(id, 'chicken', group, materials, 6, 1, { legs: [leftLeg, rightLeg] });
 }
