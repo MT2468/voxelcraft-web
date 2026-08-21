@@ -2,53 +2,83 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#78a7d8" />
-  <meta name="description" content="VoxelCraft Web, um sandbox voxel original em Three.js com terreno procedural, cavernas, mineração e construção." />
-  <title>VoxelCraft Web</title>
-  <link rel="stylesheet" href="./style-plus.css" />
+  <meta name="description" content="VoxelCraft V1, sandbox voxel 3D original com survival, crafting, dimensões, automação, clima, mobs e multiplayer opcional." />
+  <title>VoxelCraft V1</title>
+  <link rel="stylesheet" href="./style-v1.css" />
+  <link rel="stylesheet" href="./style-guide.css" />
   <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"
-      }
-    }
+    {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.185.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.185.1/examples/jsm/"}}
   </script>
 </head>
 <body>
-  <canvas id="game" aria-label="VoxelCraft 3D"></canvas>
+  <canvas id="game" aria-label="Mundo 3D do VoxelCraft"></canvas>
 
   <div id="hud" class="hidden" aria-hidden="true">
-    <div id="stats">FPS: --</div>
+    <div id="stats">FPS --</div>
     <div id="crosshair" aria-hidden="true"></div>
-    <div id="hint">WASD mover · Espaço pular/subir · Ctrl descer voando · Shift correr · Segure esquerdo para minerar · Direito colocar · 1–9 blocos · E inventário · F voo · F3 debug · Esc pausar</div>
+    <div id="hint">WASD mover · Espaço pular/nadar · Shift correr · Esquerdo minerar/atacar · Direito usar/colocar · 1–9 hotbar · E inventário · G guia/mapa · T chat · / comandos · F voo no Creative · F3 debug · Esc pausar</div>
     <div id="hotbar" aria-label="Hotbar"></div>
   </div>
 
-  <section id="menu" class="panel visible" aria-label="Menu inicial">
-    <div class="logo">VOXEL<span>CRAFT</span></div>
-    <p class="tagline">Explore, cave, construa e voe por um mundo voxel procedural.</p>
-    <button id="playButton" class="primary">Entrar no mundo</button>
-    <div class="menu-grid">
-      <button id="newWorldButton">Novo mundo</button>
-      <button id="saveButton">Salvar agora</button>
+  <section id="menu" class="panel visible" aria-label="Menu principal">
+    <div class="logo">VOXEL<span>CRAFT</span><small>V1</small></div>
+    <p class="tagline">Um mundo voxel próprio: sobreviva, construa, automatize, atravesse dimensões e enfrente o Vazio.</p>
+
+    <div class="world-row">
+      <label>Mundo salvo<select id="worldSelect" aria-label="Mundo salvo"></select></label>
+      <button id="continueButton" class="primary">Continuar selecionado</button>
     </div>
-    <details>
-      <summary>Controles</summary>
-      <p>Mouse olha. WASD move. Espaço pula. Shift corre. Segure o clique esquerdo para minerar e use o direito para colocar blocos. 1–9 ou roda do mouse seleciona a hotbar. E abre o inventário. F alterna voo criativo; voando, Espaço sobe e Ctrl desce. F3 alterna informações de debug. Esc pausa.</p>
+    <button id="playButton" class="primary wide">Entrar no mundo atual</button>
+
+    <details class="creator" open>
+      <summary>Criar mundo</summary>
+      <div class="form-grid">
+        <label>Nome<input id="worldName" value="Novo Mundo" maxlength="48"></label>
+        <label>Seed<input id="seedInput" placeholder="aleatória ou texto"></label>
+        <label>Modo<select id="gameModeSelect"><option value="survival">Survival</option><option value="creative">Creative</option><option value="adventure">Adventure</option><option value="hardcore">Hardcore</option></select></label>
+        <label>Dificuldade<select id="difficultySelect"><option value="peaceful">Peaceful</option><option value="easy">Easy</option><option value="normal" selected>Normal</option><option value="hard">Hard</option></select></label>
+      </div>
+      <button id="newWorldButton">Criar novo mundo</button>
     </details>
-    <p id="status" class="status">Preparando mundo…</p>
+
+    <div class="menu-grid">
+      <button id="saveButton">Salvar agora</button>
+      <button id="exportButton">Exportar mundo</button>
+      <button id="importButton">Importar mundo</button>
+      <button id="settingsButton">Configurações</button>
+    </div>
+    <input id="importFile" type="file" accept="application/json,.json" hidden>
+    <section id="settingsPanel" class="subpanel"></section>
+    <section id="multiplayerPanel" class="subpanel"></section>
+
+    <details>
+      <summary>Controles e recursos</summary>
+      <p>Segure o clique esquerdo para minerar. Mire em mobs para atacar. Clique direito usa blocos funcionais, comida, poções, baldes e itens. Plante sementes em terra, use bancadas e fornalhas, ligue circuitos Flux, construa portais de obsidiana e explore Emberdeep/Voidlands. Em Creative, F alterna voo.</p>
+      <p><strong>Guia de Campo:</strong> G abre mapa descoberto, comércio em cabanas, pesca, alquimia e estatísticas.</p>
+      <p><strong>Chat/comandos:</strong> T abre o chat e / abre diretamente um comando. Use <code>/help</code>.</p>
+    </details>
+    <p id="status" class="status">Preparando motor V1…</p>
   </section>
 
-  <section id="inventory" class="panel inventory" aria-label="Inventário">
-    <h2>Blocos</h2>
+  <section id="inventory" class="panel inventory" aria-label="Inventário e crafting">
+    <header><h2>Inventário & Crafting</h2><button id="closeInventory">Fechar</button></header>
     <div id="inventoryGrid"></div>
-    <button id="closeInventory">Fechar</button>
+  </section>
+
+  <aside id="chatBox" aria-live="polite"></aside>
+  <input id="chatInput" class="chat-input" placeholder="Mensagem ou /comando" maxlength="256" aria-label="Chat e comandos">
+
+  <section id="deathScreen" class="death-screen" aria-label="Tela de morte">
+    <h1>Você morreu</h1>
+    <p>O mundo continua. Seu próximo passo é voltar mais preparado.</p>
+    <button id="respawnButton" class="primary">Renascer</button>
   </section>
 
   <div id="toast" role="status" aria-live="polite"></div>
-  <noscript>Este jogo precisa de JavaScript.</noscript>
-  <script type="module" src="./src/game-plus.js"></script>
+  <noscript>VoxelCraft V1 precisa de JavaScript e WebGL.</noscript>
+  <script type="module" src="./src/game-v1.js"></script>
+  <script type="module" src="./src/v1/addons.js"></script>
 </body>
 </html>
