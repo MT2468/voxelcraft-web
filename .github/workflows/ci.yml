@@ -22,26 +22,31 @@ jobs:
         run: npm run check
       - name: Unit tests
         run: npm test
-      - name: Required project files
+      - name: Required V1 architecture
         shell: bash
         run: |
           test -s index.html
-          test -s style-v4.css
-          test -s src/game-v4.js
-          test -s src/survival.js
-          test -s src/mobs.js
-          test -s src/audio.js
-          test -s src/noise.js
-          test -s src/menu-tools.js
-          grep -q 'type="module" src="./src/game-v4.js"' index.html
-          grep -q 'type="module" src="./src/menu-tools.js"' index.html
-          grep -q 'style-v4.css' index.html
+          test -s style-v1.css
+          test -s src/game-v1.js
+          test -s src/v1/catalog.js
+          test -s src/v1/systems.js
+          test -s src/v1/world.js
+          test -s src/v1/automation.js
+          test -s src/v1/entities.js
+          test -s src/v1/renderer.js
+          test -s src/v1/save-db.js
+          test -s src/v1/commands.js
+          test -s src/v1/multiplayer.js
+          test -s server/server.mjs
+          grep -q 'type="module" src="./src/game-v1.js"' index.html
+          grep -q 'style-v1.css' index.html
           grep -q 'three@0.185.1' index.html
-          grep -q 'PointerLockControls' src/game-v4.js
-          grep -q 'updateChunks' src/game-v4.js
-          grep -q 'Inventory' src/game-v4.js
-          grep -q 'SurvivalState' src/game-v4.js
-          grep -q 'MobSystem' src/game-v4.js
-          grep -q 'localStorage' src/game-v4.js
-          grep -q 'exportSaveButton' src/menu-tools.js
-          grep -q 'seedInput' src/menu-tools.js
+          grep -q 'PointerLockControls' src/game-v1.js
+          grep -q 'WorldV1' src/game-v1.js
+          grep -q 'InventoryV1' src/game-v1.js
+          grep -q 'FluxSystem' src/game-v1.js
+          grep -q 'PortalSystem' src/game-v1.js
+          grep -q 'EntityManagerV1' src/game-v1.js
+          grep -q 'SaveDB' src/game-v1.js
+          grep -q 'MultiplayerClient' src/game-v1.js
+          grep -q 'IndexedDB' README.md || true
