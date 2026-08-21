@@ -29,15 +29,6 @@ jobs:
           sleep 2
       - name: Chromium WebGL smoke test
         run: node test/browser-smoke.mjs
-      - name: Start authoritative multiplayer server
-        run: |
-          PORT=8791 node server/server.mjs > /tmp/voxelcraft-ws.log 2>&1 &
-          for i in {1..20}; do
-            if node -e "const n=require('net').connect(8791,'127.0.0.1',()=>{n.end();process.exit(0)});n.on('error',()=>process.exit(1))"; then exit 0; fi
-            sleep 0.25
-          done
-          cat /tmp/voxelcraft-ws.log
-          exit 1
       - name: Authoritative multiplayer smoke test
         run: node test/multiplayer-smoke.mjs
       - name: Upload screenshots
