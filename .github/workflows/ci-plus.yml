@@ -1,0 +1,35 @@
+name: VoxelCraft Plus CI
+
+on:
+  push:
+    branches: [feature/creative-plus]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-plus:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+      - name: Syntax check all runtime modules
+        run: npm run check
+      - name: Procedural generation unit tests
+        run: npm test
+      - name: Enhanced UI files
+        shell: bash
+        run: |
+          test -s style-plus.css
+          grep -q 'miningBar' style-plus.css
+          grep -q 'SeededNoise' src/game-plus.js
+          grep -q 'playBreak' src/game-plus.js
+          grep -q 'toggleFlight' src/game-plus.js
+          grep -q 'caveAt' src/game-plus.js
+          grep -q 'oreFor' src/game-plus.js
+          grep -q 'version: 3' src/game-plus.js
