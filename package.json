@@ -1,0 +1,10 @@
+{
+  "name": "voxelcraft-web",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --check src/game.js && node --check src/game-plus.js && node --check src/audio.js && node --check src/noise.js",
+    "test": "node --test test/*.test.js"
+  }
+}

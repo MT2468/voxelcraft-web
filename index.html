@@ -4,8 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#78a7d8" />
+  <meta name="description" content="VoxelCraft Web, um sandbox voxel original em Three.js com terreno procedural, cavernas, mineração e construção." />
   <title>VoxelCraft Web</title>
-  <link rel="stylesheet" href="./style.css" />
+  <link rel="stylesheet" href="./style-plus.css" />
   <script type="importmap">
     {
       "imports": {
@@ -21,13 +22,13 @@
   <div id="hud" class="hidden" aria-hidden="true">
     <div id="stats">FPS: --</div>
     <div id="crosshair" aria-hidden="true"></div>
-    <div id="hint">WASD mover · Espaço pular · Shift correr · Clique esquerdo quebrar · Direito colocar · 1–8 blocos · Esc pausar</div>
+    <div id="hint">WASD mover · Espaço pular/subir · Ctrl descer voando · Shift correr · Segure esquerdo para minerar · Direito colocar · 1–9 blocos · E inventário · F voo · F3 debug · Esc pausar</div>
     <div id="hotbar" aria-label="Hotbar"></div>
   </div>
 
   <section id="menu" class="panel visible" aria-label="Menu inicial">
     <div class="logo">VOXEL<span>CRAFT</span></div>
-    <p class="tagline">Um sandbox voxel feito do zero para o navegador.</p>
+    <p class="tagline">Explore, cave, construa e voe por um mundo voxel procedural.</p>
     <button id="playButton" class="primary">Entrar no mundo</button>
     <div class="menu-grid">
       <button id="newWorldButton">Novo mundo</button>
@@ -35,7 +36,7 @@
     </div>
     <details>
       <summary>Controles</summary>
-      <p>WASD para andar, mouse para olhar, Espaço para pular, Shift para correr, clique esquerdo para quebrar, clique direito para colocar. Teclas 1–8 trocam o bloco ativo.</p>
+      <p>Mouse olha. WASD move. Espaço pula. Shift corre. Segure o clique esquerdo para minerar e use o direito para colocar blocos. 1–9 ou roda do mouse seleciona a hotbar. E abre o inventário. F alterna voo criativo; voando, Espaço sobe e Ctrl desce. F3 alterna informações de debug. Esc pausa.</p>
     </details>
     <p id="status" class="status">Preparando mundo…</p>
   </section>
@@ -48,6 +49,6 @@
 
   <div id="toast" role="status" aria-live="polite"></div>
   <noscript>Este jogo precisa de JavaScript.</noscript>
-  <script type="module" src="./src/game.js"></script>
+  <script type="module" src="./src/game-plus.js"></script>
 </body>
 </html>
