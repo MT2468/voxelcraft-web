@@ -1,21 +1,29 @@
 let context = null;
 let master = null;
+let masterVolume = 0.22;
+let muted = localStorage.getItem('voxelcraft-muted') === '1';
+
+function applyVolume() {
+  if (master) master.gain.value = muted ? 0 : masterVolume;
+}
 
 function ensureAudio() {
   if (context) {
     if (context.state === 'suspended') context.resume();
+    applyVolume();
     return context;
   }
   const AudioCtx = window.AudioContext || window.webkitAudioContext;
   if (!AudioCtx) return null;
   context = new AudioCtx();
   master = context.createGain();
-  master.gain.value = 0.22;
+  applyVolume();
   master.connect(context.destination);
   return context;
 }
 
 function tone(frequency, duration, type = 'square', volume = 0.08, slide = 0) {
+  if (muted) return;
   const ctx = ensureAudio();
   if (!ctx || !master) return;
   const now = ctx.currentTime;
@@ -32,6 +40,7 @@ function tone(frequency, duration, type = 'square', volume = 0.08, slide = 0) {
 }
 
 function noiseBurst(duration = 0.06, volume = 0.08, cutoff = 1200) {
+  if (muted) return;
   const ctx = ensureAudio();
   if (!ctx || !master) return;
   const frames = Math.max(1, Math.floor(ctx.sampleRate * duration));
@@ -54,8 +63,30 @@ export function unlockAudio() {
 }
 
 export function setMasterVolume(value) {
+  masterVolume = Math.max(0, Math.min(0.6, Number(value) || 0));
   ensureAudio();
-  if (master) master.gain.value = Math.max(0, Math.min(0.6, value));
+  applyVolume();
+  return masterVolume;
+}
+
+export function getMasterVolume() {
+  return masterVolume;
+}
+
+export function setMuted(value) {
+  muted = Boolean(value);
+  localStorage.setItem('voxelcraft-muted', muted ? '1' : '0');
+  if (!muted) ensureAudio();
+  applyVolume();
+  return muted;
+}
+
+export function toggleMuted() {
+  return setMuted(!muted);
+}
+
+export function isMuted() {
+  return muted;
 }
 
 export function playBreak(material = 'stone') {
