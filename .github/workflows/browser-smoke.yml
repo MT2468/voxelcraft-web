@@ -19,7 +19,7 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: '24'
-      - name: Install Playwright
+      - name: Install Playwright and server dependency
         run: |
           npm install --no-save playwright@1.62.1
           npx playwright install --with-deps chromium
@@ -29,6 +29,8 @@ jobs:
           sleep 2
       - name: Chromium WebGL smoke test
         run: node test/browser-smoke.mjs
+      - name: Authoritative multiplayer smoke test
+        run: node test/multiplayer-smoke.mjs
       - name: Upload screenshots
         if: always()
         uses: actions/upload-artifact@v4
